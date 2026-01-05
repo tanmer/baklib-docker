@@ -1,0 +1,51 @@
+http:
+  routers:
+    http-to-https:
+      # rule: "HostRegexp(`{host:.+}`) && !Host(`<%= URI(ENV['ASSET_CDN_HOST']).host %>`)"
+      rule: "HostRegexp(`.+\\.[a-z0-9]+$`)"
+      priority: 2
+      entryPoints: "http"
+      service: "noop@internal"
+      middlewares: "httpToHttpsRedirect"
+  middlewares:
+    httpToHttpsRedirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    redirect-www-to-root:
+      redirectRegex:
+        regex: "^(https?://)www\\.(.*)"
+        replacement: "$1$2"
+        permanent: true
+    redirect-root-to-www:
+      redirectRegex:
+        regex: "^(https?://)(.*)"
+        replacement: "$1www.$2"
+        permanent: true
+    default:
+      chain:
+        middlewares:
+        - "limit"
+        - "default-security-headers"
+        - "gzip"
+    baklib-default:
+      chain:
+        middlewares:
+        - "limit"
+        - "default-security-headers"
+        - "gzip"
+    limit:
+      buffering:
+        # 本地存储时设置为 10GB (10737418240 字节)，云存储时限制为 100MB (104857600 字节)
+        # 实际限制值由 config.sh 根据 STORAGE_SAAS_DEFAULT_SERVICE 动态设置
+        maxRequestBodyBytes: 104857600
+    default-security-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+    gzip:
+      compress:
+        minResponseBodyBytes: 1200
+    retry:
+      retry:
+        attempts: 3

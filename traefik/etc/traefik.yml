@@ -1,0 +1,66 @@
+global:
+  checkNewVersion: false
+entryPoints:
+  http:
+    address: ":80"
+  https:
+    address: ":443"
+    transport:
+      respondingTimeouts:
+        readTimeout: 300 # v2.11.2 和 v3 以后，默认 60 秒，以前是 0 秒。 这里改成 5 分钟是为了解决 harbor 的 docker push 不上的问题
+  admin:
+    address: ":8081"
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+    debugLogGeneratedTemplate: true
+  docker:
+    exposedByDefault: false
+  etcd:
+    endpoints:
+      - "etcd01:2379"
+      - "etcd02:2379"
+      - "etcd03:2379"
+    username: root
+    # 注意：这里的密码需要与 .env 文件中的 ETCD_ROOT_PASSWORD 保持一致
+    # 请根据实际情况修改此密码
+    password: your_etcd_root_password_here
+api:
+  insecure: true
+  dashboard: true
+  debug: false
+  disableDashboardAd: true
+log:
+  level: INFO
+  filePath: /var/log/traefik.log
+  maxAge: 60
+  compress: true
+accessLog:
+  addInternals: false
+  filePath: /var/log/access.log
+#   format: json
+#   fields:
+#     defaultMode: keep
+#     names:
+#       ClientUsername: drop
+#     headers:
+#       defaultMode: keep
+#       names:
+#         User-Agent: redact
+#         Authorization: drop
+#         Content-Type: keep
+
+certificatesResolvers:
+  http01:
+    acme:
+      email: 'acme-your-email@example.com'
+      storage: "/etc/traefik/letsencrypt/http01.json"
+      httpChallenge:
+        entryPoint: http
+  alidns:
+    acme:
+      email: 'acme-your-email@example.com'
+      storage: "/etc/traefik/letsencrypt/alidns.json"
+      dnsChallenge:
+        provider: alidns

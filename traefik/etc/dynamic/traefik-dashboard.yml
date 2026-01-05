@@ -1,0 +1,21 @@
+http:
+  routers:
+    traefik-dashboard:
+      rule: Host(`traefik-777.your-domain.com`)
+      service: api@internal
+      entryPoints: https
+      priority: 999999
+      tls:
+        certResolver: alidns
+        domains:
+        - main: 'your-domain.com'
+          sans:
+          - '*.your-domain.com'
+      middlewares: traefik-dashboard-auth
+  middlewares:
+    traefik-dashboard-auth:
+      basicAuth:
+        users:
+          # htpasswd -nb your-username your-password
+          # admin:baklib.com
+          - 'admin:$apr1$Liuj158d$lIY1LffdIlwdV14SgHTfH1'
