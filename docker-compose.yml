@@ -12,6 +12,8 @@ x-baklib-common: &baklib-common
       condition: service_healthy
     etcd03:
       condition: service_healthy
+    etcd-init:
+      condition: service_completed_successfully
   networks:
     - baklib
   environment: &baklib-env
@@ -115,13 +117,13 @@ x-baklib-common: &baklib-common
 
     GITHUB_PROXY_URL: ${GITHUB_PROXY_URL:-}
   volumes:
-    - ${PWD}/storage:/rails/storage:rw
-    - ${PWD}/theme_repositories:/rails/theme_repositories
+    - baklib-storage:/rails/storage
+    - baklib-theme-repositories:/rails/theme_repositories
     - ${PWD}/traefik/etc:/etc/traefik/
     - ${PWD}/product.pem:/rails/config/product.pem:ro
 
 x-etcd: &etcd-common
-  image: ${ETCD_IMAGE:-registry.devops.tanmer.com/library/etcd:v3.5.26}
+  image: &etcd-image ${ETCD_IMAGE:-registry.devops.tanmer.com/library/etcd:v3.5.26}
   restart: unless-stopped
   networks:
     - baklib
@@ -240,7 +242,6 @@ services:
       - baklib
     volumes:
       - baklib-postgres:/var/lib/postgresql/data
-      - ${PWD}/logs/postgresql:/var/log/postgresql/
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -316,6 +317,54 @@ services:
       ETCD_ADVERTISE_CLIENT_URLS: http://etcd03:2379
       ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd03:2380
 
+  etcd-init:
+    image: registry.devops.tanmer.com/library/docker:cli
+    container_name: etcd-init
+    restart: "on-failure"
+    depends_on:
+      etcd01:
+        condition: service_healthy
+      etcd02:
+        condition: service_healthy
+      etcd03:
+        condition: service_healthy
+    networks:
+      - baklib
+    environment:
+      ETCD_ENDPOINTS: http://etcd01:2379,http://etcd02:2379,http://etcd03:2379
+      ETCD_ROOT_PASSWORD: ${ETCD_ROOT_PASSWORD}
+      ETCD_IMAGE: *etcd-image
+    command: >
+      sh -c "
+      if ! command -v etcdctl >/dev/null 2>&1; then
+        TEMP_CONTAINER=etcd-temp-$$(date +%s);
+        docker create --name $$TEMP_CONTAINER $$ETCD_IMAGE >/dev/null 2>&1;
+        if docker cp $$TEMP_CONTAINER:/usr/local/bin/etcdctl /usr/local/bin/etcdctl 2>/dev/null; then
+          chmod +x /usr/local/bin/etcdctl;
+        elif docker cp $$TEMP_CONTAINER:/bin/etcdctl /usr/local/bin/etcdctl 2>/dev/null; then
+          chmod +x /usr/local/bin/etcdctl;
+        else
+          echo '❌ 无法从 etcd 镜像复制 etcdctl';
+          docker rm $$TEMP_CONTAINER >/dev/null 2>&1;
+          exit 1;
+        fi;
+        docker rm $$TEMP_CONTAINER >/dev/null 2>&1;
+      fi;
+      if etcdctl --endpoints=\"$$ETCD_ENDPOINTS\" auth status 2>/dev/null | grep -qiE '(Authentication Status: true|enabled)'; then
+        echo '✅ etcd 认证已启用，跳过初始化';
+        exit 0;
+      fi;
+      echo \"$$ETCD_ROOT_PASSWORD\" | etcdctl --endpoints=\"$$ETCD_ENDPOINTS\" user add root --interactive=false 2>/dev/null || true;
+      etcdctl --endpoints=\"$$ETCD_ENDPOINTS\" user grant-role root root 2>/dev/null || true;
+      etcdctl --endpoints=\"$$ETCD_ENDPOINTS\" auth enable;
+      echo '✅ etcd 认证已启用';
+      "
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    labels:
+      traefik.enable: "false"
+      namespace: system
+
   traefik:
     image: ${TRAEFIK_IMAGE:-registry.devops.tanmer.com/library/traefik:v3.3.5}
     container_name: traefik
@@ -327,6 +376,8 @@ services:
         condition: service_healthy
       etcd03:
         condition: service_healthy
+      etcd-init:
+        condition: service_completed_successfully
     networks:
       - baklib
     ports:
@@ -366,9 +417,9 @@ services:
       # 挂载项目目录以便调试
       - ${PWD}:/workspace:rw
       # 挂载存储目录（如果需要调试存储）
-      - ${PWD}/storage:/rails/storage:ro
+      - baklib-storage:/rails/storage:ro
       # 挂载主题仓库
-      - ${PWD}/theme_repositories:/rails/theme-repositories:ro
+      - baklib-theme-repositories:/rails/theme_repositories:ro
     environment:
       # 数据库连接信息（用于 psql）
       PGHOST: baklib-db
@@ -402,3 +453,7 @@ volumes:
     name: etcd-data02
   etcd-data03:
     name: etcd-data03
+  baklib-storage: 
+    name: baklib-storage
+  baklib-theme-repositories:
+    name: baklib-theme-repositories

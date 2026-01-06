@@ -61,6 +61,14 @@ cd baklib-docker
 ./start.sh
 ```
 
+或者直接使用：
+
+```bash
+docker compose up -d
+```
+
+这将自动启动所有服务，包括 etcd 认证初始化。
+
 4. **查看服务状态**
 
 ```bash
@@ -92,7 +100,6 @@ baklib-docker/
 ├── restart.sh                     # 重启服务脚本
 ├── stop.sh                        # 停止服务脚本
 ├── clean.sh                       # 清理脚本（清理所有资源）
-├── enable-etcd-auth.sh            # 启用 ETCD 认证脚本
 ├── test-config.sh                 # 配置测试脚本
 ├── common.sh                      # 公共函数库
 │
@@ -158,10 +165,10 @@ baklib-docker/
 ```
 
 功能：
-- 检查 `.env` 文件是否存在
-- 检查 Docker 环境
+- 检查 .env 文件和 Docker 环境
+- 自动启动所有服务（db、redis、etcd、web、job、traefik）
 - 自动初始化 ETCD 认证（如果配置了密码）
-- 启动所有服务
+- 所有服务会等待 etcd-init 完成后再启动
 
 ### restart.sh - 重启脚本
 
@@ -189,13 +196,14 @@ baklib-docker/
 
 **⚠️ 警告**：此操作会删除所有数据，包括数据库数据，请确保已备份！
 
-### enable-etcd-auth.sh - 启用 ETCD 认证
+### ETCD 认证初始化
 
-手动启用 ETCD 认证：
+ETCD 认证会在每次 `docker compose up` 时自动初始化。`etcd-init` 服务会：
+- 检查认证是否已启用
+- 如果未启用，自动创建 root 用户并启用认证
+- 如果已启用，快速跳过
 
-```bash
-./enable-etcd-auth.sh
-```
+无需手动操作，认证初始化会自动完成。
 
 ## 🎯 服务说明
 
@@ -377,11 +385,15 @@ docker compose ps
 ### 6. ETCD 认证失败怎么办？
 
 ```bash
-# 手动启用 ETCD 认证
-./enable-etcd-auth.sh
-
-# 或检查 .env 文件中的 ETCD_ROOT_PASSWORD 是否正确
+# 检查 .env 文件中的 ETCD_ROOT_PASSWORD 是否正确
 grep ETCD_ROOT_PASSWORD .env
+
+# 查看 etcd-init 容器日志
+docker compose logs etcd-init
+
+# 重新运行 etcd-init（删除容器后重新启动）
+docker compose rm -f etcd-init
+docker compose up -d etcd-init
 ```
 
 ### 7. 如何修改配置？
