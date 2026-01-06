@@ -26,8 +26,6 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 
 #### 第一步：联系客服申请试用账号
 
-<div align="center">
-
 **📱 扫描下方二维码，添加企业微信客服申请试用账号**
 
 ![企业微信客服二维码](contact_me_qr.png)
@@ -37,8 +35,6 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 - 提供您的联系方式（邮箱/电话）
 - 说明部署需求和使用场景
 - 告知预计部署环境（操作系统、硬件配置等）
-
-</div>
 
 #### 第二步：获取访问凭证
 
@@ -54,21 +50,6 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 1. 使用提供的 Docker Registry 账号登录
 2. 将证书文件 `product.pem` 放置到项目根目录
 3. 按照下方 [快速开始](#-快速开始) 指南完成部署
-
-### 🔐 证书说明
-
-<div align="center">
-
-| 项目 | 说明 |
-|:---:|:---|
-| 📄 **证书文件** | `product.pem` |
-| ⏰ **有效期** | **1 年** |
-| 🎯 **用途** | Baklib 产品授权验证 |
-| 📥 **获取方式** | 通过客服申请后提供 |
-
-</div>
-
-> ⚠️ **重要提示**：证书有效期为 1 年，到期前请及时联系客服续期，否则系统将无法正常使用。
 
 ### 💡 部署优势
 
@@ -101,15 +82,11 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 
 ## ✨ 核心特性
 
-<div align="center">
-
 | 🚀 部署体验 | 🔧 自动化配置 | 🔒 安全可靠 |
 |:---:|:---:|:---:|
 | 一键安装部署 | 交互式配置脚本 | HTTPS 支持 |
 | 完整服务栈 | 自动生成配置 | 证书管理 |
 | Docker 容器化 | 环境变量管理 | 数据加密 |
-
-</div>
 
 ### 🌟 详细特性
 
@@ -122,8 +99,11 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 #### 🔧 配置与管理
 
 - **自动化配置**：交互式配置脚本，自动生成环境变量文件
+- **智能配置**：自动检测本地试用环境（`baklib.localhost`），自动配置相关参数
+- **自动更新 Traefik**：配置脚本自动同步 Traefik 配置文件，无需手动修改
+- **配置验证**：自动验证 `.env` 文件语法，防止配置错误
 - **灵活配置**：支持多种存储、邮件、短信服务配置
-- **配置验证**：提供配置测试脚本，确保配置正确
+- **存储优化**：根据存储类型自动调整 Traefik 超时和请求体大小限制
 
 #### 🔒 安全与证书
 
@@ -191,10 +171,13 @@ chmod +x install.sh
 - ✅ 运行配置脚本（交互式配置）
 - ✅ 创建必要的目录
 - ✅ 检查必要文件（如 `product.pem`）
-- ✅ 登录 Docker 镜像仓库（需要输入 Registry 账号密码）
+- ✅ 自动登录 Docker 镜像仓库（从 `.env` 文件读取 `REGISTRY_USERNAME` 和 `REGISTRY_PASSWORD`）
 - ✅ 拉取 Docker 镜像
 
-> 💡 **提示**：在安装过程中，脚本会提示您输入 Docker Registry 的账号和密码，请使用客服提供的凭证。
+> 💡 **提示**：
+> - 如果 `.env` 文件中已配置 `REGISTRY_USERNAME` 和 `REGISTRY_PASSWORD`，安装脚本会自动使用这些凭证登录
+> - 如果未配置，安装脚本会提示您输入 Docker Registry 的账号和密码，请使用客服提供的凭证
+> - 配置脚本会自动将 Docker Registry 凭证保存到 `.env` 文件中
 
 #### 4️⃣ 启动服务
 
@@ -249,7 +232,6 @@ baklib-docker/
 ├── test-config.sh                 # 配置测试脚本
 ├── common.sh                      # 公共函数库
 │
-├── .env                           # 环境变量文件（需要创建，不提交到 git）
 ├── product.pem                    # 产品证书文件（需要创建）
 │
 ├── traefik/                       # Traefik 配置目录
@@ -267,6 +249,10 @@ baklib-docker/
 │
 ├── storage/                       # 本地存储目录（使用 local 存储时）
 └── theme_repositories/            # 主题仓库目录
+
+**注意**：
+- `shell` 服务默认不启动，需要使用 `--profile debug` 启动
+- 所有数据卷使用命名卷，便于管理和备份
 ```
 
 ## 🛠️ 主要脚本
@@ -280,12 +266,16 @@ baklib-docker/
 ```
 
 功能：
-- 检查 Docker 环境
-- 运行配置脚本（如果 `.env` 不存在）
+- 检查 Docker 环境（Docker 和 Docker Compose）
+- 运行配置脚本（`config.sh`，如果 `.env` 不存在会创建）
 - 创建必要的目录
-- 检查必要文件
-- 登录 Docker 镜像仓库
+- 检查必要文件（如 `product.pem`）
+- **自动登录 Docker 镜像仓库**（从 `.env` 文件读取 `REGISTRY_USERNAME` 和 `REGISTRY_PASSWORD`）
 - 拉取 Docker 镜像
+
+**注意**：
+- 如果 `.env` 文件中已配置 Docker Registry 凭证，会自动使用
+- 如果未配置，会提示输入凭证，并保存到 `.env` 文件
 
 ### config.sh - 配置脚本
 
@@ -296,11 +286,20 @@ baklib-docker/
 ```
 
 功能：
-- 如果 `.env` 不存在，从 `.env.example` 创建
+- 如果 `.env` 不存在，从 `.env.example` 创建（如果 `.env.example` 不存在会报错，需要先创建 `.env` 文件）
 - 交互式提示输入各项配置
+- **自动检测本地试用环境**：如果主域名为 `baklib.localhost`，自动配置本地环境参数（`SHOW_VERIFICATION_CODE=y`、`INGRESS_PROTOCOL=http`、`INGRESS_PORT=80`、关闭 HTTPS）
 - 自动生成 `SECRET_KEY_BASE`
-- 更新 Traefik 配置文件
-- 支持非交互模式：`./config.sh --non-interactive`
+- **自动更新 Traefik 配置文件**：
+  - 更新 `traefik/etc/traefik.yml`（ETCD 密码、证书解析器、ACME 邮箱、readTimeout）
+  - 更新 `traefik/etc/dynamic/common.yml`（HTTP 到 HTTPS 重定向、请求体大小限制）
+  - 更新 `traefik/etc/dynamic/traefik-dashboard.yml`（域名、entryPoints、TLS 配置）
+  - 更新 `docker-compose.yml`（Traefik 路由配置）
+- **根据存储类型自动调整配置**：
+  - 本地存储：`readTimeout` 设置为 20 分钟，`maxRequestBodyBytes` 设置为 10GB
+  - 云存储：`readTimeout` 设置为 5 分钟，`maxRequestBodyBytes` 设置为 100MB
+- **验证 `.env` 文件语法**：自动检查语法错误（未匹配的引号、变量名格式等）
+- 支持非交互模式：`./config.sh --non-interactive`（从 `.env` 文件读取配置并更新 Traefik 配置）
 
 ### start.sh - 启动脚本
 
@@ -342,14 +341,25 @@ baklib-docker/
 
 **⚠️ 警告**：此操作会删除所有数据，包括数据库数据，请确保已备份！
 
+**安全机制**：
+- 需要连续输入 **3 次不同的验证码** 才能执行清理操作
+- 每次验证码都是随机生成的 4 位数字
+- 如果验证码输入错误，会重置确认次数，需要重新开始
+- 这是为了防止误操作导致数据丢失
+
 ### ETCD 认证初始化
 
 ETCD 认证会在每次 `docker compose up` 时自动初始化。`etcd-init` 服务会：
+- 等待 etcd 集群所有节点健康就绪
 - 检查认证是否已启用
 - 如果未启用，自动创建 root 用户并启用认证
 - 如果已启用，快速跳过
 
-无需手动操作，认证初始化会自动完成。
+**重要提示**：
+- `etcd-init` 服务会在所有 etcd 节点健康后自动运行
+- 所有依赖 etcd 的服务（web、job、traefik）会等待 `etcd-init` 完成后再启动
+- 无需手动操作，认证初始化会自动完成
+- 如果认证初始化失败，相关服务将无法启动，请检查日志：`docker compose logs etcd-init`
 
 ## 🎯 服务说明
 
@@ -359,7 +369,12 @@ Rails Web 应用服务，处理 HTTP 请求。
 
 - **容器名**: `baklib-web`  
 - **健康检查**: `/_healthz` 端点
-- **资源限制**: 默认 4 CPU, 4096M 内存（可通过环境变量调整）
+- **资源限制**: 默认 4 CPU, 4096M 内存（可通过环境变量 `WEB_CONCURRENCY` 和 `WEB_MEMORY` 调整）
+- **环境变量**：
+  - `RAILS_SERVE_STATIC_FILES`: `y`（启用静态文件服务）
+  - `APP_DATABASE_POOL`: 数据库连接池大小（默认 6）
+  - `REDIS_POOL`: Redis 连接池大小（默认 7）
+  - `WEB_CONCURRENCY`: Web 并发数（可选）
 
 ### Job 服务
 
@@ -413,6 +428,24 @@ Traefik 反向代理服务，负责路由和负载均衡。
   - 文件配置（从 `/etc/traefik/dynamic/` 读取）
   - ETCD 配置（从 etcd 集群读取）
   - ACME 证书自动申请（HTTP-01 和 DNS-01 挑战）
+- **环境变量**:
+  - `ALICLOUD_ACCESS_KEY`: 阿里云 Access Key（用于 DNS-01 挑战）
+  - `ALICLOUD_SECRET_KEY`: 阿里云 Secret Key（用于 DNS-01 挑战）
+
+### Shell 服务（调试模式）
+
+用于调试和运维的 Shell 容器，默认不启动。
+
+- **容器名**: `baklib-shell`
+- **镜像**: `registry.devops.tanmer.com/library/alpine:3.19`
+- **启动方式**: 使用 `debug` profile 启动
+  ```bash
+  docker compose --profile debug up -d shell
+  ```
+- **功能**:
+  - 提供调试环境，包含常用工具（psql、redis-cli、etcdctl 等）
+  - 挂载项目目录和存储目录，方便调试
+  - 预配置数据库、Redis、ETCD 连接环境变量
 
 ## ⚙️ 配置说明
 
@@ -422,7 +455,7 @@ Traefik 反向代理服务，负责路由和负载均衡。
 
 #### 必填配置项
 
-- `SECRET_KEY_BASE`: Rails Secret Key Base（使用 `rails secret` 生成）
+- `SECRET_KEY_BASE`: Rails Secret Key Base（配置脚本会自动生成）
 - `POSTGRES_PASSWORD`: PostgreSQL 数据库密码
 - `MAIN_DOMAIN`: 主域名
 - `SAAS_DOMAIN_SUFFIX`: SaaS 域名后缀（如：`.example.com`）
@@ -430,11 +463,23 @@ Traefik 反向代理服务，负责路由和负载均衡。
 - `CNAME_DNS_SUFFIX`: CNAME DNS 后缀（如：`.cname.example.com`）
 - `EXTERNAL_IP`: 服务器外部 IP
 - `ETCD_ROOT_PASSWORD`: ETCD Root 密码
+- `REGISTRY_USERNAME`: Docker 镜像仓库用户名（用于拉取私有镜像）
+- `REGISTRY_PASSWORD`: Docker 镜像仓库密码
+- `IMAGE_NAME`: Docker 镜像完整路径（如：`registry.devops.tanmer.com/your-account/baklib`）
+- `IMAGE_TAG`: Docker 镜像标签（如：`v1.31.0`）
 
 #### 可选配置项
 
+- **本地试用环境配置**（当 `MAIN_DOMAIN=baklib.localhost` 时自动配置）:
+  - `SHOW_VERIFICATION_CODE`: 显示验证码（`y`/`n`，默认 `y`）
+  - `INGRESS_PROTOCOL`: 入口协议（`http`/`https`，默认 `http`）
+  - `INGRESS_PORT`: 入口端口（默认 `80`）
+
 - **HTTPS 配置**:
   - `MAIN_DOMAIN_CERT_RESOLVER`: 证书解析器（`http01` 或 `alidns`）
+  - `SAAS_DOMAIN_CERT_RESOLVER`: SaaS 域名证书解析器
+  - `API_DOMAIN_CERT_RESOLVER`: API 域名证书解析器
+  - `FREE_DOMAIN_CERT_RESOLVER`: 免费域名证书解析器
   - `ACME_EMAIL`: ACME 证书邮箱
   - `DNS_ALIYUN_ACCESS_KEY`: 阿里云 Access Key（DNS-01 挑战时使用）
   - `DNS_ALIYUN_SECRET_KEY`: 阿里云 Secret Key（DNS-01 挑战时使用）
@@ -444,14 +489,27 @@ Traefik 反向代理服务，负责路由和负载均衡。
   - 根据存储类型配置相应的 Access Key 和 Secret Key
 
 - **短信服务配置**:
-  - `TEXT_MESSAGE_ADAPTER`: 短信适配器（`ucloud`/`aliyun`/`qiyewechat`）
+  - `TEXT_MESSAGE_ADAPTER`: 短信适配器（`ucloud`/`aliyun`/`qiyewechat`，默认 `qiyewechat`）
   - 根据适配器配置相应的密钥
 
 - **邮件服务配置**:
-  - `MAILER_DELIVERY_METHOD`: 邮件发送方式（`smtp`/`sendmail`/`none`）
+  - `MAILER_DELIVERY_METHOD`: 邮件发送方式（`smtp`/`sendmail`/`none`，默认 `none`）
   - SMTP 相关配置
 
-详细配置说明请参考 `.env.example` 文件。
+- **资源限制配置**:
+  - `WEB_CONCURRENCY`: Web 服务 CPU 限制（默认 4）
+  - `WEB_MEMORY`: Web 服务内存限制（默认 4096M）
+  - `REDIS_POOL`: Redis 连接池大小（默认 7）
+  - `APP_DATABASE_POOL`: 数据库连接池大小（默认 6）
+
+- **其他配置**:
+  - `GITHUB_PROXY_URL`: GitHub 代理 URL（可选）
+  - `SENTRY_DSN`: Sentry 错误追踪 DSN（可选）
+  - `SENTRY_CURRENT_ENV`: Sentry 环境名称（可选）
+  - `ALLOW_CREATE_ORGANIZATION`: 是否允许创建组织（默认 `true`）
+  - `RESERVED_ORGANIZATION_IDENTIFIERS`: 保留的组织标识符（用空格分隔）
+
+详细配置说明请参考 `.env.example` 文件（如果存在）。
 
 ### Traefik 配置
 
@@ -465,7 +523,13 @@ Traefik 配置文件位于 `traefik/etc/` 目录：
 详细说明请参考 `traefik/README.md`。
 
 **重要提示**：
-- 确保 `traefik/etc/traefik.yml` 中 etcd 的密码与 `.env` 文件中的 `ETCD_ROOT_PASSWORD` 一致
+- **配置脚本会自动更新 Traefik 配置文件**，无需手动修改
+- `config.sh` 会自动同步以下配置：
+  - `traefik.yml`: ETCD 密码、证书解析器、ACME 邮箱、readTimeout（根据存储类型）
+  - `common.yml`: HTTP 到 HTTPS 重定向、请求体大小限制（根据存储类型）
+  - `traefik-dashboard.yml`: 域名、entryPoints、TLS 配置
+  - `docker-compose.yml`: Traefik 路由配置（entryPoints、TLS）
+- 如果手动修改了 Traefik 配置文件，运行 `./config.sh` 会覆盖您的修改
 - 如果使用 ACME DNS 挑战，需要配置 `DNS_ALIYUN_ACCESS_KEY` 和 `DNS_ALIYUN_SECRET_KEY`
 
 ## ❓ 常见问题
@@ -537,28 +601,82 @@ grep ETCD_ROOT_PASSWORD .env
 # 查看 etcd-init 容器日志
 docker compose logs etcd-init
 
+# 检查 etcd 集群健康状态
+docker compose exec etcd01 /usr/local/bin/etcdctl --endpoints=http://localhost:2379 endpoint health
+
 # 重新运行 etcd-init（删除容器后重新启动）
 docker compose rm -f etcd-init
 docker compose up -d etcd-init
+
+# 如果 etcd-init 一直失败，可以手动初始化（不推荐）
+# 首先确保 etcd 集群健康，然后进入 etcd-init 容器手动执行初始化命令
 ```
 
 ### 7. 如何修改配置？
 
 ```bash
-# 重新运行配置脚本
+# 重新运行配置脚本（推荐）
 ./config.sh
 
 # 或手动编辑 .env 文件
 vim .env
 
+# 如果手动修改了 .env，建议运行非交互模式更新 Traefik 配置
+./config.sh --non-interactive
+
 # 修改后重启服务
 ./restart.sh
+```
+
+**注意**：
+- 如果只修改了 `.env` 文件，运行 `./config.sh --non-interactive` 会自动更新 Traefik 配置文件
+- 配置脚本会自动验证 `.env` 文件语法，如果发现错误会提示修复
+
+### 8. 如何使用 Shell 调试服务？
+
+```bash
+# 启动 Shell 服务（调试模式）
+docker compose --profile debug up -d shell
+
+# 进入 Shell 容器
+docker compose exec shell sh
+
+# 在容器内可以使用预配置的环境变量：
+# - PGHOST, PGPORT, PGUSER, PGDATABASE, PGPASSWORD（PostgreSQL）
+# - REDIS_HOST, REDIS_PORT（Redis）
+# - ETCD_ENDPOINTS, ETCD_USER, ETCD_PASSWORD（ETCD）
+
+# 使用 psql 连接数据库
+psql
+
+# 使用 redis-cli 连接 Redis
+redis-cli -h $REDIS_HOST -p $REDIS_PORT
+
+# 使用 etcdctl 连接 ETCD
+etcdctl --endpoints=$ETCD_ENDPOINTS --user=$ETCD_USER:$ETCD_PASSWORD endpoint health
+```
+
+### 9. 配置脚本验证失败怎么办？
+
+```bash
+# 检查 .env 文件语法
+./config.sh --non-interactive
+
+# 如果提示语法错误，检查：
+# 1. 未匹配的引号（单引号或双引号）
+# 2. 变量名中包含非法字符
+# 3. 特殊字符未正确转义
+
+# 常见问题：
+# - 值中包含引号：使用转义或使用不同的引号类型
+# - 值中包含空格：确保值用引号包裹
+# - 值中包含特殊字符：使用引号包裹或转义
 ```
 
 ## 📚 相关文档
 
 - [Traefik 配置说明](traefik/README.md) - Traefik 反向代理配置说明
-- [环境变量示例](.env.example) - 所有环境变量的示例和说明
+- 环境变量配置：通过 `./config.sh` 脚本交互式配置，或参考 `docker-compose.yml` 中的环境变量定义
 
 ## ⚠️ 注意事项
 
@@ -576,14 +694,17 @@ vim .env
 
 ### ⚙️ 系统配置
 
-7. **资源限制**：根据实际服务器配置调整 CPU 和内存限制
+7. **资源限制**：根据实际服务器配置调整 CPU 和内存限制（通过 `WEB_CONCURRENCY` 和 `WEB_MEMORY` 环境变量）
 8. **网络安全**：确保数据库和 Redis 不对外暴露端口
 9. **Docker Registry**：妥善保管 Docker Registry 账号密码，不要泄露
+10. **Traefik 配置**：不要手动修改 Traefik 配置文件，使用 `config.sh` 脚本自动更新
+11. **本地试用环境**：使用 `baklib.localhost` 作为主域名时，系统会自动配置本地环境参数，无需手动设置 HTTPS
+12. **存储类型影响**：选择不同的存储类型会影响 Traefik 的超时和请求体大小限制，配置脚本会自动调整
 
 ### 📞 获取帮助
 
-10. **技术支持**：如遇到问题，请联系客服获取技术支持
-11. **证书续期**：证书到期前 30 天，建议联系客服申请续期
+13. **技术支持**：如遇到问题，请联系客服获取技术支持
+14. **证书续期**：证书到期前 30 天，建议联系客服申请续期
 
 ## 📝 许可证
 
