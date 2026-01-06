@@ -38,54 +38,7 @@ else
 fi
 echo ""
 
-# 3. 创建必要的目录
-print_info "创建必要的目录..."
-directories=(
-    "logs/postgresql"
-    "logs/traefik"
-    "traefik/etc/dynamic"
-    "storage"
-)
-
-for dir in "${directories[@]}"; do
-    if [ ! -d "$dir" ]; then
-        mkdir -p "$dir"
-        print_success "创建目录: $dir"
-    else
-        print_info "目录已存在: $dir"
-    fi
-done
-echo ""
-
-# 4. 检查必要的文件
-print_info "检查必要的文件..."
-
-# 检查 product.pem
-if [ ! -f "product.pem" ]; then
-    print_error "product.pem 文件不存在！"
-    print_info "product.pem 是必需的配置文件，请先创建此文件"
-    echo ""
-    echo "如果不需要产品证书，可以创建一个空文件："
-    echo "  touch product.pem"
-    echo ""
-    read -p "是否现在创建空的 product.pem 文件？(y/n): " create_pem
-    if [ "$create_pem" = "y" ] || [ "$create_pem" = "Y" ]; then
-        touch product.pem
-        print_success "已创建空的 product.pem 文件"
-    else
-        print_error "product.pem 文件是必需的，安装已取消"
-        exit 1
-    fi
-fi
-
-# 检查 Traefik 配置文件
-if [ ! -f "traefik/etc/traefik.yml" ]; then
-    print_warning "Traefik 配置文件不存在"
-    print_info "请确保 traefik/etc/traefik.yml 文件存在"
-fi
-echo ""
-
-# 5. Docker 镜像仓库登录（在拉取镜像之前）
+# 3. Docker 镜像仓库登录（在拉取镜像之前）
 print_info "检查 Docker 镜像仓库认证..."
 
 # Docker 镜像仓库地址（固定）
@@ -108,23 +61,7 @@ else
 fi
 echo ""
 
-# 6. 验证 .env 文件语法（Docker Compose 会自动读取 .env 文件）
-print_info "验证 .env 文件语法..."
-if ! validate_env_file ".env"; then
-    print_error ".env 文件有语法错误，请修复后再继续"
-    echo ""
-    echo "常见问题："
-    echo "  1. 未匹配的引号（单引号或双引号）"
-    echo "  2. 变量名中包含非法字符"
-    echo "  3. 特殊字符未正确转义"
-    echo ""
-    echo "请检查 .env 文件，特别是错误提示的行号附近"
-    exit 1
-fi
-print_success ".env 文件语法检查通过"
-echo ""
-
-# 7. 拉取镜像
+# 4. 拉取镜像
 print_info "拉取 Docker 镜像..."
 COMPOSE_CMD=$(get_compose_cmd)
 
@@ -144,8 +81,7 @@ echo ""
 print_success "安装完成！"
 echo ""
 echo "接下来可以运行以下命令："
-echo "  ./start.sh    - 启动服务"
-echo "  ./restart.sh  - 重启服务"
-echo "  ./stop.sh     - 停止服务"
-echo "  ./debug.sh    - 启动调试容器"
+echo "  ./start.sh             - 启动服务"
+echo "  ./restart.sh           - 重启服务"
+echo "  ./stop.sh              - 停止服务"
 echo ""

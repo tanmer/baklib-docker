@@ -895,3 +895,37 @@ update_traefik_configs "$ENABLE_HTTPS" "$MAIN_DOMAIN" "$ETCD_ROOT_PASSWORD" "$AC
 print_success "Traefik 配置文件更新完成"
 echo ""
 
+# 检查必要的文件
+print_info "检查必要的文件..."
+
+# 检查 product.pem
+if [ ! -f "product.pem" ]; then
+    print_warning "product.pem 文件不存在"
+    print_info "如果不需要产品证书，可以创建一个空文件："
+    echo "  touch product.pem"
+    echo ""
+fi
+
+# 检查 Traefik 配置文件
+if [ ! -f "traefik/etc/traefik.yml" ]; then
+    print_warning "Traefik 配置文件不存在"
+    print_info "请确保 traefik/etc/traefik.yml 文件存在"
+fi
+echo ""
+
+# 验证 .env 文件语法
+print_info "验证 .env 文件语法..."
+if ! validate_env_file ".env"; then
+    print_error ".env 文件有语法错误，请修复后再继续"
+    echo ""
+    echo "常见问题："
+    echo "  1. 未匹配的引号（单引号或双引号）"
+    echo "  2. 变量名中包含非法字符"
+    echo "  3. 特殊字符未正确转义"
+    echo ""
+    echo "请检查 .env 文件，特别是错误提示的行号附近"
+    exit 1
+fi
+print_success ".env 文件语法检查通过"
+echo ""
+

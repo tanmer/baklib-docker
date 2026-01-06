@@ -12,30 +12,59 @@ generate_verification_code() {
     echo $(($RANDOM % 9000 + 1000))
 }
 
-# 验证用户输入
+# 验证用户输入（需要连续输入3次不同的验证码）
 verify_code() {
-    local correct_code=$1
-    local max_attempts=3
-    local attempt=1
+    local required_confirmations=3
+    local confirmed=0
 
-    while [ $attempt -le $max_attempts ]; do
+    while [ $confirmed -lt $required_confirmations ]; do
+        # 每次生成新的验证码
+        local current_code=$(generate_verification_code)
+        
         echo ""
-        read -p "请输入验证码以确认清理操作: " user_input
-
-        if [ "$user_input" = "$correct_code" ]; then
-            return 0
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        
+        # 根据已确认次数显示不同严重程度的警告
+        if [ $confirmed -eq 0 ]; then
+            echo "⚠️  第一次确认：请输入验证码以确认清理操作"
+            echo "⚠️  此操作将删除所有容器、网络和数据卷！"
+        elif [ $confirmed -eq 1 ]; then
+            echo "⚠️  ⚠️  第二次确认：请再次输入验证码"
+            echo "⚠️  ⚠️  此操作将永久删除所有数据，无法恢复！"
         else
-            attempt=$((attempt + 1))
-            if [ $attempt -le $max_attempts ]; then
-                echo "❌ 验证码错误！还有 $((max_attempts - attempt + 1)) 次机会"
-            else
-                echo "❌ 验证码错误次数过多，操作已取消！"
-                return 1
+            echo "🚨 🚨 🚨 第三次确认：请最后一次输入验证码"
+            echo "🚨 🚨 🚨 这是最后一次确认，输入正确后将立即执行清理操作！"
+            echo "🚨 🚨 🚨 此操作将永久删除所有容器、网络和数据卷，无法恢复！"
+        fi
+        
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "验证码: $current_code"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        
+        read -p "请输入验证码: " user_input
+
+        if [ "$user_input" = "$current_code" ]; then
+            confirmed=$((confirmed + 1))
+            local remaining=$((required_confirmations - confirmed))
+            if [ $confirmed -lt $required_confirmations ]; then
+                echo ""
+                echo "✅ 验证码正确！还需要 $remaining 次确认"
+                if [ $confirmed -eq 1 ]; then
+                    echo "⚠️  请确保您真的想要执行此危险操作！"
+                else
+                    echo "🚨 这是最后一次确认，请谨慎操作！"
+                fi
             fi
+        else
+            echo ""
+            echo "❌ 验证码错误！"
+            echo "⚠️  为了安全，已重置确认次数，需要重新开始确认流程"
+            confirmed=0
         fi
     done
 
-    return 1
+    return 0
 }
 
 echo "=========================================="
@@ -44,16 +73,11 @@ echo "=========================================="
 echo ""
 echo "⚠️  此操作不可逆，请确保已备份重要数据！"
 echo ""
-
-# 生成并显示验证码
-VERIFICATION_CODE=$(generate_verification_code)
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "验证码: $VERIFICATION_CODE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "⚠️  为了安全，需要连续输入3次不同的验证码才能执行清理操作"
 echo ""
 
-# 验证用户输入
-if ! verify_code "$VERIFICATION_CODE"; then
+# 验证用户输入（每次生成新的验证码）
+if ! verify_code; then
     echo ""
     echo "操作已取消，未执行任何清理操作。"
     exit 1
