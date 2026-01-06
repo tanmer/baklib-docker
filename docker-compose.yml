@@ -366,7 +366,7 @@ services:
       namespace: system
 
   traefik:
-    image: ${TRAEFIK_IMAGE:-registry.devops.tanmer.com/library/traefik:v3.3.5}
+    image: ${TRAEFIK_IMAGE:-registry.devops.tanmer.com/library/traefik:v3.6.6}
     container_name: traefik
     restart: unless-stopped
     depends_on:
