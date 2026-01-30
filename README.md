@@ -215,6 +215,31 @@ docker compose logs -f
 - 📊 查看 Traefik Dashboard：`http://localhost:8081`
 - 📝 查看日志：`docker compose logs -f [服务名]`
 
+#### 6️⃣ 安装模版到数据库（首次安装必选）
+
+系统安装并启动服务后，需将公开的 **Wiki 模板** 从 Gitee 仓库导入到数据库（首次安装必选，需在服务已正常启动后执行），便于在应用中选择使用：
+
+```bash
+./import-themes.sh
+```
+
+脚本会：
+
+1. 从 [https://gitee.com/baklib/theme-wiki](https://gitee.com/baklib/theme-wiki) 克隆主题到主题仓库卷
+2. 在 Web 容器内执行 `bin/rails themes:import dir=/rails/theme_repositories/theme-wiki` 将模板写入数据库
+
+**选项：**
+
+| 选项 | 说明 |
+|------|------|
+| `--skip-clone` | 仅执行导入（主题目录已存在时使用） |
+| `--clone-only` | 仅克隆仓库，不执行导入 |
+| `-h, --help` | 显示帮助 |
+
+**环境变量：** 可通过 `THEME_WIKI_REPO`、`THEME_DIR_NAME` 覆盖默认仓库地址和目录名。
+
+> 导入后无需重启服务，可直接在应用中使用模板。
+
 ## 📁 目录结构
 
 ```
@@ -229,6 +254,7 @@ baklib-docker/
 ├── restart.sh                     # 重启服务脚本
 ├── stop.sh                        # 停止服务脚本
 ├── clean.sh                       # 清理脚本（清理所有资源）
+├── import-themes.sh               # 导入主题模版到数据库（首次安装必选，需服务已正常启动后执行）
 ├── test-config.sh                 # 配置测试脚本
 ├── common.sh                      # 公共函数库
 │
@@ -330,6 +356,19 @@ baklib-docker/
 ```bash
 ./stop.sh
 ```
+
+### import-themes.sh - 导入主题（模版）
+
+首次安装必选。需在服务已正常启动后执行，将 Gitee 上的 Wiki 模板导入到数据库：
+
+```bash
+./import-themes.sh
+```
+
+功能：
+- 从 [Gitee theme-wiki](https://gitee.com/baklib/theme-wiki) 克隆主题到主题仓库卷
+- 在 Web 容器内执行 `bin/rails themes:import dir=...` 写入数据库
+- 支持 `--skip-clone`（仅导入）、`--clone-only`（仅克隆）
 
 ### clean.sh - 清理脚本
 
