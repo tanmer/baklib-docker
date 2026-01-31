@@ -1,9 +1,7 @@
 @echo off
-chcp 65001 >nul
 setlocal enabledelayedexpansion
 
-REM Baklib 统一入口（Windows）：通过 docker compose 执行 config / install / start / stop / restart / import-themes
-REM 用法: baklib.cmd config | install | start | stop | restart | import-themes [--skip-clone|--clone-only|...]
+REM Baklib CLI (Windows): config | install | start | stop | restart | uninstall | clean | import-themes
 
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
@@ -26,8 +24,7 @@ if "%~1"=="install" (
 )
 if "%~1"=="start" (
     for /f "delims=" %%i in ('docker compose ps --status running -q 2^>nul') do (
-        echo 服务已在运行，无需重复启动。
-        echo    如需重启请执行: %~nx0 restart
+        echo Services already running. Use %~nx0 restart to restart.
         exit /b 1
     )
     docker compose up -d
@@ -42,9 +39,8 @@ if "%~1"=="start" (
         if "!START_PROTO!"=="" set "START_PROTO=http"
         if not "!START_DOM!"=="" (
             echo.
-            echo 服务已启动。请访问下方地址，使用管理员手机号登录：
-            echo    !START_PROTO!://!START_DOM!
-            if not "!START_PHONE!"=="" echo    管理员手机号：!START_PHONE!
+            echo Services started. Open: !START_PROTO!://!START_DOM!
+            if not "!START_PHONE!"=="" echo Admin phone: !START_PHONE!
             echo.
         )
     )
@@ -59,12 +55,11 @@ if "%~1"=="restart" (
     goto end
 )
 if "%~1"=="uninstall" (
-    echo 正在停止并移除容器（保留 .env 与数据卷）...
+    echo Stopping and removing containers, keeping .env and volumes...
     for %%I in ("%CD%") do set "PROJ=%%~nxI"
     set "COMPOSE_PROJECT_NAME=!PROJ!"
     docker compose -f docker-compose.yml down --remove-orphans
-    echo 已卸载。.env 与数据卷已保留，可再次执行 install 与 start。
-    echo    若要彻底删除所有数据，请使用: %~nx0 clean
+    echo Done. Run %~nx0 install then %~nx0 start to start again. Use %~nx0 clean to remove all data.
     goto end
 )
 if "%~1"=="clean" (
@@ -72,34 +67,34 @@ if "%~1"=="clean" (
     docker compose -f "%CLI_FILE%" run --rm -e "COMPOSE_PROJECT_NAME=!PROJ!" clean
     goto end
 )
-if "%~1"=="import-themes" (
-    shift
-    for %%I in ("%CD%") do set "PROJ=%%~nxI"
-    docker compose -f "%CLI_FILE%" run --rm -e "COMPOSE_PROJECT_NAME=!PROJ!" import-themes bash ./scripts/import-themes.sh %*
-    goto end
-)
+if "%~1"=="import-themes" goto do_import_themes
 
-echo 未知子命令: %~1
+echo Unknown subcommand: %~1
 goto usage
 
+:do_import_themes
+shift
+for %%I in ("%CD%") do set "PROJ=%%~nxI"
+docker compose -f "%CLI_FILE%" run --rm -e "COMPOSE_PROJECT_NAME=!PROJ!" import-themes bash ./scripts/import-themes.sh %*
+goto end
+
 :usage
-echo 用法: %~nx0 ^<子命令^> [参数...]
+echo Usage: %~nx0 ^<subcommand^> [options...]
 echo.
-echo 子命令:
-echo   config         生成/更新 .env（交互式配置）
-echo   install        准备：登录仓库、拉取镜像（需先 config）
-echo   start          启动主栈
-echo   stop           停止主栈
-echo   restart        重启主栈
-echo   uninstall      停止并移除容器（保留 .env 与数据卷，可再次 start）
-echo   clean          彻底清理容器、网络与数据卷（需 3 次验证码确认）
-echo   import-themes  导入主题模版（首次必选），可传 --skip-clone、--clone-only
+echo Subcommands:
+echo   config         Generate/update .env (interactive)
+echo   install        Login registry, pull images (run config first)
+echo   start          Start stack
+echo   stop           Stop stack
+echo   restart        Restart stack
+echo   uninstall      Remove containers, keep .env and volumes
+echo   clean          Remove containers, networks and volumes (3 confirmations)
+echo   import-themes  Import theme template (required once), options: --skip-clone, --clone-only
 echo.
-echo 示例:
+echo Examples:
 echo   %~nx0 config
 echo   %~nx0 install
 echo   %~nx0 start
-echo   %~nx0 uninstall
 exit /b 1
 
 :end

@@ -220,7 +220,7 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 8. **验证**  
    浏览器访问配置的主域名，Traefik Dashboard：`http://localhost:8081`。
 
-> **说明**：`config` / `install` / `import-themes` 通过 Docker 运行 CLI 镜像（挂载项目目录与 Docker 套接字），首次会构建镜像 `baklib-cli:local`。
+> **说明**：`config` / `install` / `import-themes` 使用**已发布的 CLI 镜像**（由项目预构建，见 `.env` 中 `BAKLIB_CLI_IMAGE`），无需本地构建，避免国内环境拉取 debian/apt 源失败。
 
 ---
 
@@ -291,15 +291,16 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 baklib-docker/
 ├── README.md                      # 本文件
 ├── docker-compose.yml             # Docker Compose 主配置（应用栈）
-├── docker-compose.cli.yml         # CLI 配置（config / install / import-themes 服务）
-├── Dockerfile.cli                  # CLI 镜像（Debian + bash + docker + docker-compose）
-├── .env.example                    # 环境变量配置示例
+├── docker-compose.cli.yml         # CLI 配置（拉取 BAKLIB_CLI_IMAGE，不本地构建）
+├── Dockerfile.cli                 # 维护者用：构建并发布 CLI 镜像（见「发布 CLI 镜像」）
+├── .env.example                   # 环境变量配置示例
 │
 ├── baklib                         # 统一入口（Linux/macOS）：config | install | start | stop | restart | uninstall | clean | import-themes
 ├── baklib.cmd                     # 统一入口（Windows）：同上
 ├── scripts/                       # 内部脚本（由 baklib / CLI 容器调用，不建议直接执行）
 │   ├── config.sh                  # 配置 .env
 │   ├── install.sh                 # 准备镜像
+│   ├── build-and-push-cli.sh      # 维护者用：构建并推送 CLI 镜像到仓库
 │   ├── start.sh                   # 启动（建议用 baklib start）
 │   ├── stop.sh                    # 停止（建议用 baklib stop）
 │   ├── restart.sh                 # 重启（建议用 baklib restart）
@@ -330,6 +331,20 @@ baklib-docker/
 - `shell` 服务默认不启动，需要使用 `--profile debug` 启动
 - 所有数据卷使用命名卷，便于管理和备份
 ```
+
+### 发布 CLI 镜像（维护者）
+
+CLI 镜像由项目单独构建并推送到仓库，用户端只拉取、不本地构建，避免国内环境拉取 debian/apt 源失败。维护者发布新版本步骤：
+
+1. **构建并推送**（需已登录对应镜像仓库；脚本使用 buildx 构建 **linux/amd64 + linux/arm64** 多平台镜像）：
+   ```bash
+   ./scripts/build-and-push-cli.sh registry.devops.tanmer.com/library/baklib-cli:latest
+   ```
+   或指定版本标签：`./scripts/build-and-push-cli.sh registry.devops.tanmer.com/library/baklib-cli:v1.0.0`
+
+2. 若需在**国内可访问的镜像站**再发一份，可再执行一次并传入该镜像站地址；用户可在 `.env` 中设置 `BAKLIB_CLI_IMAGE=国内镜像地址` 使用。
+
+构建环境需能访问 `docker.io`（debian:bookworm-slim）及 `download.docker.com`（docker-ce-cli），建议在海外或具备代理的 CI/本机执行。
 
 ## 🛠️ 主要脚本
 
@@ -510,6 +525,7 @@ Traefik 反向代理服务，负责路由和负载均衡。
 - `REGISTRY_PASSWORD`: Docker 镜像仓库密码
 - `IMAGE_NAME`: Docker 镜像完整路径（如：`registry.devops.tanmer.com/your-account/baklib`）
 - `IMAGE_TAG`: Docker 镜像标签（如：`v1.31.0`）
+- `BAKLIB_CLI_IMAGE`:（可选）CLI 镜像地址，用于 config/install/import-themes/clean；未设置时使用默认已发布镜像 `registry.devops.tanmer.com/library/baklib-cli:latest`
 
 #### 可选配置项
 
@@ -584,6 +600,10 @@ Traefik 配置文件位于 `traefik/etc/` 目录：
 **install**：若服务已启动，执行 `./baklib install`（或 `baklib.cmd install`）时会**直接退出并提示**先执行 stop 再执行 install，或若仅需更新镜像则修改 `.env` 中 `IMAGE_TAG` 后执行 `docker compose pull` 再执行 restart。
 
 若未通过 baklib 而直接执行 `docker compose up -d`，可能看到“已存在”（already exists）等提示，属正常现象；建议日常统一使用 baklib/baklib.cmd，以便获得上述检查与提示。使用 `./baklib install` 时若出现 “Found orphan containers” 警告，是因为主栈已在运行、当前命令使用 `docker-compose.cli.yml`，可忽略。
+
+### 0.1 CLI 镜像拉取失败或想用国内镜像？
+
+CLI 镜像由项目预构建发布，用户只需拉取（不本地构建）。默认镜像为 `registry.devops.tanmer.com/library/baklib-cli:latest`。若拉取失败或希望使用国内镜像站上的 CLI 镜像，可在 `.env` 中设置 `BAKLIB_CLI_IMAGE=你的镜像地址`。
 
 ### 1. 如何查看服务日志？
 

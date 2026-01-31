@@ -1,6 +1,9 @@
 # Baklib CLI 镜像：用于在容器内执行 config/install/import-themes 等脚本
 # 挂载项目目录与 Docker 套接字后，可复用同一套 shell 脚本（GNU sed 等）
-FROM debian:bookworm-slim
+# 国内镜像站拉取失败时，可设置 DOCKER_CLI_BASE_IMAGE 为镜像站地址，例如：
+#   DOCKER_CLI_BASE_IMAGE=docker.xuanyuan.me/library/debian:bookworm-slim
+ARG BASE_IMAGE=debian:bookworm-slim
+FROM ${BASE_IMAGE}
 
 RUN apt-get update -qq \
     && apt-get install -y -qq --no-install-recommends \

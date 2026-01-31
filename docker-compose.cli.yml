@@ -1,5 +1,5 @@
 # Baklib CLI：配置 / 安装 / 导入主题 等命令
-# 不依赖 .env，可在首次配置前使用。
+# 使用已发布的 CLI 镜像（BAKLIB_CLI_IMAGE），不本地构建，避免国内环境拉取 debian/apt 源失败。
 # 用法示例：
 #   docker compose -f docker-compose.cli.yml run --rm config
 #   docker compose -f docker-compose.cli.yml run --rm install
@@ -11,10 +11,7 @@
 
 services:
   config:
-    build:
-      context: .
-      dockerfile: Dockerfile.cli
-    image: baklib-cli:local
+    image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
     container_name: baklib-cli-config
     stdin_open: true
     tty: true
@@ -25,10 +22,7 @@ services:
     command: ["bash", "./scripts/config.sh"]
 
   install:
-    build:
-      context: .
-      dockerfile: Dockerfile.cli
-    image: baklib-cli:local
+    image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
     container_name: baklib-cli-install
     stdin_open: true
     tty: true
@@ -40,10 +34,7 @@ services:
     command: ["bash", "./scripts/install.sh"]
 
   import-themes:
-    build:
-      context: .
-      dockerfile: Dockerfile.cli
-    image: baklib-cli:local
+    image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
     container_name: baklib-cli-import-themes
     stdin_open: true
     tty: true
@@ -55,10 +46,7 @@ services:
     command: ["bash", "./scripts/import-themes.sh"]
 
   clean:
-    build:
-      context: .
-      dockerfile: Dockerfile.cli
-    image: baklib-cli:local
+    image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
     container_name: baklib-cli-clean
     stdin_open: true
     tty: true
