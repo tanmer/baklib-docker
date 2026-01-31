@@ -26,6 +26,9 @@ usage() {
     echo "  THEME_DIR_NAME    克隆后的目录名（默认: theme-wiki）"
 }
 
+# Windows baklib.cmd 可能误传子命令名，忽略首个参数 "import-themes"
+[ "$1" = "import-themes" ] && shift
+
 SKIP_CLONE=false
 CLONE_ONLY=false
 while [ $# -gt 0 ]; do
@@ -48,7 +51,10 @@ if [ ! -f ".env" ]; then
 fi
 
 # 1. 克隆主题仓库到 volume（可选）
-# 使用临时 Alpine 容器挂载主题卷并克隆（shell 服务挂载为只读，无法写入）
+# 统一使用 CLI 镜像挂载主题卷并克隆（CLI 镜像已含 git，无需额外 alpine）
+CLI_IMAGE="${BAKLIB_CLI_IMAGE:-$(read_env_value 'BAKLIB_CLI_IMAGE')}"
+CLI_IMAGE="${CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}"
+
 if [ "$SKIP_CLONE" = false ]; then
     THEME_VOLUME=$(docker volume ls --format '{{.Name}}' | grep 'baklib-theme-repositories' | head -1)
     if [ -z "$THEME_VOLUME" ]; then
@@ -61,7 +67,7 @@ if [ "$SKIP_CLONE" = false ]; then
         exit 1
     fi
     print_info "将 theme-wiki 克隆到主题仓库卷..."
-    if ! docker run --rm -v "${THEME_VOLUME}:/data" -w /data alpine sh -c "apk add --no-cache git >/dev/null 2>&1 && (test -d ${THEME_DIR_NAME} && (cd ${THEME_DIR_NAME} && git pull --ff-only) || git clone --depth 1 ${THEME_WIKI_REPO} ${THEME_DIR_NAME})"; then
+    if ! docker run --rm -v "${THEME_VOLUME}:/data" -w /data "$CLI_IMAGE" bash -c "(test -d ${THEME_DIR_NAME} && (cd ${THEME_DIR_NAME} && git pull --ff-only) || git clone --depth 1 ${THEME_WIKI_REPO} ${THEME_DIR_NAME})"; then
         print_error "克隆主题仓库失败，请检查网络或仓库地址: ${THEME_WIKI_REPO}"
         exit 1
     fi

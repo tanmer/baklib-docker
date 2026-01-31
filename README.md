@@ -393,7 +393,7 @@ CLI 镜像由项目单独构建并推送到仓库，用户端只拉取、不本�
 通过 `./baklib import-themes` 或 `baklib.cmd import-themes` 调用。首次安装必选，需在服务已正常启动后执行。
 
 功能：
-- 从 [Gitee theme-wiki](https://gitee.com/baklib/theme-wiki) 克隆主题到主题仓库卷
+- 从 [Gitee theme-wiki](https://gitee.com/baklib/theme-wiki) 克隆主题到主题仓库卷（统一使用 CLI 镜像挂载主题卷执行 git clone，与 config/install 同一镜像，无需额外 alpine）
 - 在 Web 容器内执行 `bin/rails themes:import dir=...` 写入数据库
 - 支持 `--skip-clone`（仅导入）、`--clone-only`（仅克隆）
 
