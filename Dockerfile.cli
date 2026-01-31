@@ -1,0 +1,25 @@
+# Baklib CLI 镜像：用于在容器内执行 config/install/import-themes 等脚本
+# 挂载项目目录与 Docker 套接字后，可复用同一套 shell 脚本（GNU sed 等）
+FROM debian:bookworm-slim
+
+RUN apt-get update -qq \
+    && apt-get install -y -qq --no-install-recommends \
+        bash \
+        ca-certificates \
+        curl \
+        gnupg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod 644 /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update -qq \
+    && apt-get install -y -qq --no-install-recommends \
+        docker-ce-cli \
+        docker-compose-plugin \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /work
+
+# 脚本由宿主机挂载到 /work，不复制进镜像，便于更新
+# 由 docker-compose 的 command 指定要执行的脚本，如 bash ./config.sh

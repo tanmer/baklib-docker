@@ -120,7 +120,8 @@ x-baklib-common: &baklib-common
     - baklib-storage:/rails/storage
     - baklib-theme-repositories:/rails/theme_repositories
     - ${PWD}/traefik/etc:/etc/traefik/
-    - ${PWD}/product.pem:/rails/config/product.pem:ro
+    # 使用 HOST_PROJECT_ROOT 以便在 CLI 容器内执行 run --rm web 时仍能挂载宿主机上的 product.pem（否则 PWD=/work 会导致宿主机无此路径、挂载成目录）
+    - ${HOST_PROJECT_ROOT:-${PWD}}/product.pem:/rails/config/product.pem:ro
 
 x-etcd: &etcd-common
   image: &etcd-image ${ETCD_IMAGE:-registry.devops.tanmer.com/library/etcd:v3.5.26}

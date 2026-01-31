@@ -6,7 +6,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -477,7 +478,7 @@ run_test() {
 
     # 运行 config.sh（非交互模式）
     print_warning "运行 config.sh --non-interactive..."
-    if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+    if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
         print_success "config.sh 执行成功"
     else
         print_error "config.sh 执行失败"
@@ -548,7 +549,7 @@ main() {
     if run_test "HTTPS开启-http01" "test4.example.com" "y" "http01" "local"; then
         # 再次运行，但这次关闭 HTTPS
         create_test_env "HTTPS关闭" "test4.example.com" "n" "" "local"
-        if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+        if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
             if check_bad_files && verify_config "HTTPS关闭" "n" "" "test4.example.com"; then
                 passed_tests=$((passed_tests + 1))
             else
@@ -569,7 +570,7 @@ main() {
     if run_test "HTTPS关闭" "test5.example.com" "n" "" "local"; then
         # 再次运行，但这次开启 HTTPS
         create_test_env "HTTPS开启-http01" "test5.example.com" "y" "http01" "local"
-        if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+        if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
             if check_bad_files && verify_config "HTTPS开启-http01" "y" "http01" "test5.example.com"; then
                 passed_tests=$((passed_tests + 1))
             else
@@ -621,11 +622,11 @@ main() {
     if run_test "HTTPS开启-http01" "test9.example.com" "y" "http01" "local"; then
         # 切换到关闭
         create_test_env "HTTPS关闭" "test9.example.com" "n" "" "local"
-        if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+        if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
             if check_bad_files && verify_config "HTTPS关闭" "n" "" "test9.example.com"; then
                 # 再次切换到开启
                 create_test_env "HTTPS开启-http01" "test9.example.com" "y" "http01" "local"
-                if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+                if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
                     if check_bad_files && verify_config "HTTPS开启-http01" "y" "http01" "test9.example.com"; then
                         passed_tests=$((passed_tests + 1))
                     else
@@ -658,11 +659,11 @@ main() {
     if run_test "HTTPS开启-http01" "test10.example.com" "y" "http01" "local"; then
         # 切换到 alidns
         create_test_env "HTTPS开启-alidns" "test10.example.com" "y" "alidns" "local"
-        if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+        if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
             if check_bad_files && verify_config "HTTPS开启-alidns" "y" "alidns" "test10.example.com"; then
                 # 再次切换回 http01
                 create_test_env "HTTPS开启-http01" "test10.example.com" "y" "http01" "local"
-                if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+                if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
                     if check_bad_files && verify_config "HTTPS开启-http01" "y" "http01" "test10.example.com"; then
                         passed_tests=$((passed_tests + 1))
                     else
@@ -695,7 +696,7 @@ main() {
     if run_test "HTTPS开启-http01" "test11-1.example.com" "y" "http01" "local"; then
         # 变更域名
         create_test_env "HTTPS开启-http01" "test11-2.example.com" "y" "http01" "local"
-        if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+        if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
             if check_bad_files && verify_config "HTTPS开启-http01" "y" "http01" "test11-2.example.com"; then
                 passed_tests=$((passed_tests + 1))
             else
@@ -719,11 +720,11 @@ main() {
     if run_test "存储类型-local" "test12.example.com" "y" "http01" "local"; then
         # 切换到 qinium
         create_test_env "存储类型-qinium" "test12.example.com" "y" "http01" "qinium"
-        if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+        if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
             if check_bad_files && verify_config "存储类型-qinium" "y" "http01" "test12.example.com"; then
                 # 切换回 local
                 create_test_env "存储类型-local" "test12.example.com" "y" "http01" "local"
-                if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+                if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
                     if check_bad_files && verify_config "存储类型-local" "y" "http01" "test12.example.com"; then
                         passed_tests=$((passed_tests + 1))
                     else
@@ -759,7 +760,7 @@ main() {
 
     # 第一次：关闭 HTTPS
     create_test_env "HTTPS关闭-多次执行测试" "test13.example.com" "n" "" "local"
-    if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+    if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
         if check_bad_files && verify_config "HTTPS关闭" "n" "" "test13.example.com"; then
             # 检查 basicAuth 是否被修改
             local after_first_auth_line=$(grep -E "^\s*#?-.*admin:" traefik/etc/dynamic/traefik-dashboard.yml || grep -E "^\s*-.*admin:" traefik/etc/dynamic/traefik-dashboard.yml || echo "")
@@ -769,7 +770,7 @@ main() {
             else
                 # 第二次：开启 HTTPS
                 create_test_env "HTTPS开启-多次执行测试" "test13.example.com" "y" "http01" "local"
-                if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+                if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
                     if check_bad_files && verify_config "HTTPS开启-http01" "y" "http01" "test13.example.com"; then
                         # 检查 basicAuth 是否被修改
                         local after_second_auth_line=$(grep -E "^\s*#?-.*admin:" traefik/etc/dynamic/traefik-dashboard.yml || grep -E "^\s*-.*admin:" traefik/etc/dynamic/traefik-dashboard.yml || echo "")
@@ -779,7 +780,7 @@ main() {
                         else
                             # 第三次：再次关闭 HTTPS
                             create_test_env "HTTPS关闭-多次执行测试" "test13.example.com" "n" "" "local"
-                            if bash config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
+                            if bash scripts/config.sh --non-interactive > /tmp/config-test-output.log 2>&1; then
                                 if check_bad_files && verify_config "HTTPS关闭" "n" "" "test13.example.com"; then
                                     # 检查 basicAuth 是否被修改
                                     local after_third_auth_line=$(grep -E "^\s*#?-.*admin:" traefik/etc/dynamic/traefik-dashboard.yml || grep -E "^\s*-.*admin:" traefik/etc/dynamic/traefik-dashboard.yml || echo "")

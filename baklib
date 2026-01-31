@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Baklib 统一入口：config | install | start | stop | restart | uninstall | import-themes
+# 用法: ./baklib config | install | start | stop | restart | uninstall | import-themes [--skip-clone|...]
+
+set -e
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+CLI_FILE="docker-compose.cli.yml"
+
+usage() {
+  echo "用法: $0 <子命令> [参数...]"
+  echo ""
+  echo "子命令:"
+  echo "  config         生成/更新 .env（交互式配置）"
+  echo "  install        准备：登录仓库、拉取镜像（需先 config）"
+  echo "  start          启动主栈"
+  echo "  stop           停止主栈"
+  echo "  restart        重启主栈"
+  echo "  uninstall      停止并移除容器（保留 .env 与数据卷，可再次 start）"
+  echo "  clean          彻底清理容器、网络与数据卷（需 3 次验证码确认）"
+  echo "  import-themes  导入主题模版（首次必选），可传 --skip-clone、--clone-only"
+  echo ""
+  echo "示例:"
+  echo "  $0 config"
+  echo "  $0 install"
+  echo "  $0 start"
+  echo "  $0 uninstall"
+}
+
+case "${1:-}" in
+  config)
+    docker compose -f "$CLI_FILE" run --rm config
+    ;;
+  install)
+    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}"
+    export HOST_PROJECT_ROOT="$PWD"
+    docker compose -f "$CLI_FILE" run --rm -e "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" -e "HOST_PROJECT_ROOT=$HOST_PROJECT_ROOT" install
+    ;;
+  start)
+    if [ -n "$(docker compose ps --status running -q 2>/dev/null)" ]; then
+      echo "❌ 服务已在运行，无需重复启动。"
+      echo "   如需重启请执行: $0 restart"
+      exit 1
+    fi
+    docker compose up -d
+    if [ -f .env ]; then
+      _domain=$(grep -E '^MAIN_DOMAIN=' .env 2>/dev/null | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//" | tr -d '\r' | head -1)
+      _protocol=$(grep -E '^INGRESS_PROTOCOL=' .env 2>/dev/null | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//" | tr -d '\r' | head -1)
+      _port=$(grep -E '^INGRESS_PORT=' .env 2>/dev/null | cut -d= -f2- | tr -d '\r' | head -1)
+      _phone=$(grep -E '^ADMIN_PHONE=' .env 2>/dev/null | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//" | tr -d '\r' | head -1)
+      _protocol=${_protocol:-http}
+      if [ -n "$_domain" ]; then
+        if [ -n "$_port" ] && [ "$_port" != "80" ] && [ "$_port" != "443" ]; then
+          _url="${_protocol}://${_domain}:${_port}"
+        else
+          _url="${_protocol}://${_domain}"
+        fi
+        echo ""
+        echo "✅ 服务已启动。请访问下方地址，使用管理员手机号登录："
+        echo "   $_url"
+        if [ -n "$_phone" ]; then
+          echo "   管理员手机号：$_phone"
+        fi
+        echo ""
+      fi
+    fi
+    ;;
+  stop)
+    docker compose stop
+    ;;
+  restart)
+    docker compose restart
+    ;;
+  uninstall)
+    echo "正在停止并移除容器（保留 .env 与数据卷）..."
+    # 显式指定项目名与主 compose，与 install 的检查一致，避免目录/上下文差异导致“卸载后仍检测到运行”
+    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}"
+    export COMPOSE_PROJECT_NAME
+    docker compose -f docker-compose.yml down --remove-orphans
+    echo "✅ 已卸载。.env 与数据卷已保留，可再次执行 install 与 start。"
+    echo "   若要彻底删除所有数据，请使用: $0 clean"
+    ;;
+  clean)
+    # 传入宿主机当前目录名作为项目名，使容器内 docker compose down -v 能清理宿主机上的同一项目
+    export COMPOSE_PROJECT_NAME
+    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}"
+    docker compose -f "$CLI_FILE" run --rm -e "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" clean
+    ;;
+  import-themes)
+    shift
+    COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}"
+    docker compose -f "$CLI_FILE" run --rm -e "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" import-themes bash ./scripts/import-themes.sh "$@"
+    ;;
+  -h|--help|"")
+    usage
+    exit 0
+    ;;
+  *)
+    echo "未知子命令: $1"
+    usage
+    exit 1
+    ;;
+esac

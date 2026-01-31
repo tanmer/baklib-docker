@@ -8,6 +8,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
+# 允许 Ctrl+C 立即终止配置流程（含在 Docker 容器内运行时）
+trap 'echo ""; echo "已取消配置"; exit 130' INT
+
 # 检查是否是非交互模式
 NON_INTERACTIVE=false
 if [ "$1" = "--non-interactive" ] || [ "$1" = "-n" ] || [ "${NON_INTERACTIVE_MODE}" = "true" ]; then
@@ -71,6 +74,7 @@ if [ "$NON_INTERACTIVE" = "true" ]; then
     POSTGRES_PASSWORD=$(read_env_value "POSTGRES_PASSWORD")
     ETCD_ROOT_PASSWORD=$(read_env_value "ETCD_ROOT_PASSWORD")
     SECRET_KEY_BASE=$(read_env_value "SECRET_KEY_BASE")
+    ADMIN_PHONE=$(read_env_value "ADMIN_PHONE")
 
     # 存储配置
     STORAGE_SAAS_DEFAULT_SERVICE=$(read_env_value "STORAGE_SAAS_DEFAULT_SERVICE")
@@ -375,6 +379,10 @@ else
     ETCD_ROOT_PASSWORD=$(prompt_config "ETCD_ROOT_PASSWORD" "ETCD Root 密码")
 
     echo ""
+    print_info "管理员账号（首个用户登录手机号，install 时将写入数据库）"
+    ADMIN_PHONE=$(prompt_config "ADMIN_PHONE" "管理员手机号（首个用户登录账号）")
+
+    echo ""
     print_info "生成 SECRET_KEY_BASE..."
     SECRET_KEY_BASE_DEFAULT=$(read_env_value "SECRET_KEY_BASE")
     if [ -z "$SECRET_KEY_BASE_DEFAULT" ]; then
@@ -392,35 +400,23 @@ else
     echo "=========================================="
     echo ""
 
-    # Docker 镜像仓库配置
+    # Docker 镜像仓库配置（始终显示，便于查看或修改；按回车保留当前值）
     REGISTRY_SERVER="registry.devops.tanmer.com"
     print_info "Docker 镜像仓库地址: ${REGISTRY_SERVER} (固定)"
 
-    # 检查是否需要登录
     REGISTRY_USERNAME_DEFAULT=$(read_env_value "REGISTRY_USERNAME")
     REGISTRY_PASSWORD_DEFAULT=$(read_env_value "REGISTRY_PASSWORD")
-
-    # 从 IMAGE_NAME 中提取用户名（如果存在）
+    # 从 IMAGE_NAME 中提取用户名作为默认（如果存在）
     IMAGE_NAME_DEFAULT=$(read_env_value "IMAGE_NAME")
-    if [ -n "$IMAGE_NAME_DEFAULT" ]; then
-        # 从 registry.devops.tanmer.com/your-account/baklib 中提取 your-account
+    if [ -z "$REGISTRY_USERNAME_DEFAULT" ] && [ -n "$IMAGE_NAME_DEFAULT" ]; then
         if echo "$IMAGE_NAME_DEFAULT" | grep -q "^${REGISTRY_SERVER}/"; then
             NAMESPACE_PART=$(echo "$IMAGE_NAME_DEFAULT" | sed "s|^${REGISTRY_SERVER}/||" | cut -d'/' -f1)
-            if [ -n "$NAMESPACE_PART" ] && [ "$NAMESPACE_PART" != "$IMAGE_NAME_DEFAULT" ]; then
-                REGISTRY_USERNAME_DEFAULT=$NAMESPACE_PART
-            fi
+            [ -n "$NAMESPACE_PART" ] && [ "$NAMESPACE_PART" != "$IMAGE_NAME_DEFAULT" ] && REGISTRY_USERNAME_DEFAULT=$NAMESPACE_PART
         fi
     fi
 
-    if [ -z "$REGISTRY_USERNAME_DEFAULT" ] || [ -z "$REGISTRY_PASSWORD_DEFAULT" ]; then
-        print_warning "需要配置 Docker 镜像仓库认证信息"
-        REGISTRY_USERNAME=$(prompt_config "REGISTRY_USERNAME" "Docker 镜像仓库用户名（账户名）")
-        REGISTRY_PASSWORD=$(prompt_config "REGISTRY_PASSWORD" "Docker 镜像仓库密码")
-    else
-        REGISTRY_USERNAME=$REGISTRY_USERNAME_DEFAULT
-        REGISTRY_PASSWORD=$REGISTRY_PASSWORD_DEFAULT
-        print_info "使用现有的 Docker 镜像仓库认证信息"
-    fi
+    REGISTRY_USERNAME=$(prompt_config "REGISTRY_USERNAME" "Docker 镜像仓库用户名（账户名）")
+    REGISTRY_PASSWORD=$(prompt_config_secret "REGISTRY_PASSWORD" "Docker 镜像仓库密码")
 
     # 配置镜像名称和标签
     echo ""
@@ -517,6 +513,7 @@ update_env_file "EXTERNAL_IP" "$EXTERNAL_IP"
 update_env_file "POSTGRES_PASSWORD" "$POSTGRES_PASSWORD"
 update_env_file "ETCD_ROOT_PASSWORD" "$ETCD_ROOT_PASSWORD"
 update_env_file "SECRET_KEY_BASE" "$SECRET_KEY_BASE"
+update_env_file "ADMIN_PHONE" "$ADMIN_PHONE"
 
 # 更新 Docker 镜像仓库配置
 if [ -n "$REGISTRY_USERNAME" ]; then

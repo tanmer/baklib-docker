@@ -3,9 +3,10 @@
 # 公共函数库
 # 用于所有脚本的通用函数
 
-# 获取脚本所在目录
+# 脚本所在目录与项目根目录（便于脚本放在 scripts/ 子目录时仍从项目根运行）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -114,44 +115,78 @@ prompt_config() {
     echo "$value"
 }
 
+# 交互式输入密码类配置项：默认值显示为 ****，直接回车则保留原值
+prompt_config_secret() {
+    local key=$1
+    local description=$2
+    local default_value=$(read_env_value "$key")
+    local value=""
+    local prompt_text=""
+
+    if [ -n "$default_value" ]; then
+        prompt_text="$description [****]: "
+    else
+        prompt_text="$description: "
+    fi
+
+    if [ -t 0 ]; then
+        read -s -p "$prompt_text" value
+        echo "" >&2
+    else
+        read -p "$prompt_text" value < /dev/tty
+    fi
+
+    if [ -z "$value" ] && [ -n "$default_value" ]; then
+        value="$default_value"
+    fi
+    echo "$value"
+}
+
 # 更新 .env 文件
+# 对 REGISTRY_USERNAME、REGISTRY_PASSWORD 等始终用单引号写入，避免以 -、* 等开头的密码被误解析
 update_env_file() {
     local key=$1
     local value=$2
+    local line_content
+    local escaped_for_sed
+
+    # 需要单引号包裹的 key（用户名、密码等含特殊字符时易出问题）
+    case "$key" in
+        REGISTRY_USERNAME|REGISTRY_PASSWORD)
+            # 单引号包裹，值内单引号转为 '\''
+            line_content="${key}='$(printf '%s' "$value" | sed "s/'/'\\\\''/g")'"
+            ;;
+        *)
+            if [ -z "$value" ]; then
+                line_content=""
+            elif echo "$value" | grep -qE '[ "$`]'; then
+                line_content="${key}=\"${value}\""
+            else
+                line_content="${key}=${value}"
+            fi
+            ;;
+    esac
 
     if grep -q "^${key}=" .env 2>/dev/null; then
         # 更新现有配置
-        if [ -z "$value" ]; then
-            # 如果值为空，删除该行
+        if [ -z "$value" ] && [ "$key" != "REGISTRY_USERNAME" ] && [ "$key" != "REGISTRY_PASSWORD" ]; then
             if sed --version >/dev/null 2>&1; then
                 sed -i "/^${key}=/d" .env
             else
                 sed -i '' "/^${key}=/d" .env
             fi
-        else
-            # 如果值包含空格或特殊字符，需要加引号
-            if echo "$value" | grep -qE '[ "$`]'; then
-                if sed --version >/dev/null 2>&1; then
-                    sed -i "s|^${key}=.*|${key}=\"${value}\"|" .env
-                else
-                    sed -i '' "s|^${key}=.*|${key}=\"${value}\"|" .env
-                fi
+        elif [ -n "$line_content" ]; then
+            escaped_for_sed=$(printf '%s' "$line_content" | sed 's/\\/\\\\/g; s/&/\\&/g')
+            if sed --version >/dev/null 2>&1; then
+                sed -i "s|^${key}=.*|${escaped_for_sed}|" .env
             else
-                if sed --version >/dev/null 2>&1; then
-                    sed -i "s|^${key}=.*|${key}=${value}|" .env
-                else
-                    sed -i '' "s|^${key}=.*|${key}=${value}|" .env
-                fi
+                sed -i '' "s|^${key}=.*|${escaped_for_sed}|" .env
             fi
         fi
     else
         # 添加新配置（如果值不为空）
-        if [ -n "$value" ]; then
-            if echo "$value" | grep -qE '[ "$`]'; then
-                echo "${key}=\"${value}\"" >> .env
-            else
-                echo "${key}=${value}" >> .env
-            fi
+        if [ -n "$line_content" ]; then
+            echo "$line_content" >> .env
         fi
     fi
 }

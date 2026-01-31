@@ -1,0 +1,70 @@
+# Baklib CLI：配置 / 安装 / 导入主题 等命令
+# 不依赖 .env，可在首次配置前使用。
+# 用法示例：
+#   docker compose -f docker-compose.cli.yml run --rm config
+#   docker compose -f docker-compose.cli.yml run --rm install
+#   docker compose -f docker-compose.cli.yml run --rm import-themes [--skip-clone|--clone-only]
+# 启动/停止/重启主栈仍在项目目录执行：
+#   docker compose up -d
+#   docker compose stop
+#   docker compose restart
+
+services:
+  config:
+    build:
+      context: .
+      dockerfile: Dockerfile.cli
+    image: baklib-cli:local
+    container_name: baklib-cli-config
+    stdin_open: true
+    tty: true
+    init: true
+    working_dir: /work
+    volumes:
+      - .:/work
+    command: ["bash", "./scripts/config.sh"]
+
+  install:
+    build:
+      context: .
+      dockerfile: Dockerfile.cli
+    image: baklib-cli:local
+    container_name: baklib-cli-install
+    stdin_open: true
+    tty: true
+    init: true
+    working_dir: /work
+    volumes:
+      - .:/work
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["bash", "./scripts/install.sh"]
+
+  import-themes:
+    build:
+      context: .
+      dockerfile: Dockerfile.cli
+    image: baklib-cli:local
+    container_name: baklib-cli-import-themes
+    stdin_open: true
+    tty: true
+    init: true
+    working_dir: /work
+    volumes:
+      - .:/work
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["bash", "./scripts/import-themes.sh"]
+
+  clean:
+    build:
+      context: .
+      dockerfile: Dockerfile.cli
+    image: baklib-cli:local
+    container_name: baklib-cli-clean
+    stdin_open: true
+    tty: true
+    init: true
+    working_dir: /work
+    volumes:
+      - .:/work
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["bash", "./scripts/clean.sh"]

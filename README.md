@@ -73,6 +73,9 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 - [个人用户私有化部署](#-个人用户私有化部署)
 - [特性](#特性)
 - [快速开始](#快速开始)
+- [安装与使用（按平台）](#-安装与使用按平台)
+- [后期维护](#-后期维护)
+- [统一命令速查](#-统一命令速查)
 - [目录结构](#目录结构)
 - [主要脚本](#主要脚本)
 - [服务说明](#服务说明)
@@ -119,144 +122,191 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 
 ## 🚀 快速开始
 
-### 📋 前置要求
+1. **克隆或下载项目**：`git clone <repository-url>` 并 `cd baklib-docker`。
+2. **准备凭证**：向客服申请试用账号，获取 Docker Registry 账号/密码及 `product.pem` 证书；安装并启动 Docker（20.10+）与 Docker Compose（2.0+）。
+3. **按平台安装**：请查看 **[安装与使用（按平台）](#-安装与使用按平台)**，按 Linux/macOS 或 Windows 步骤执行（使用 `baklib` 或 `baklib.cmd` 完成配置、安装、启动及首次导入主题）。
+4. **部署完成后**：访问配置的主域名（如 `http://baklib.localhost`）、Traefik Dashboard：`http://localhost:8081`；日常维护见 **[后期维护](#-后期维护)**。
 
-在开始之前，请确保您的系统满足以下要求：
+---
 
-| 要求 | 版本/规格 |
-|------|----------|
-| Docker | 20.10+ |
-| Docker Compose | 2.0+（或 docker-compose 1.29+） |
-| 可用内存 | 至少 8GB |
-| 可用磁盘空间 | 至少 20GB |
-| 操作系统 | Linux / macOS / Windows (WSL2) |
+## 📦 安装与使用（按平台）
 
-### 🔑 准备工作
+以下按 **Linux / macOS** 与 **Windows** 分别说明安装步骤；日常维护命令见 [后期维护](#-后期维护)。
 
-在开始部署之前，请确保您已经：
+### 前置要求（通用）
 
-- ✅ 已向客服申请并获得试用账号
-- ✅ 已获取 Docker Registry 账号和密码
-- ✅ 已获取产品证书文件 `product.pem`
-- ✅ 已安装 Docker 和 Docker Compose
-
-### 📦 安装步骤
-
-#### 1️⃣ 克隆或下载项目
-
-```bash
-git clone <repository-url>
-cd baklib-docker
-```
-
-#### 2️⃣ 放置证书文件
-
-将客服提供的 `product.pem` 证书文件放置到项目根目录：
-
-```bash
-# 确保证书文件在项目根目录
-ls -la product.pem
-```
-
-#### 3️⃣ 运行安装脚本
-
-```bash
-chmod +x install.sh
-./install.sh
-```
-
-安装脚本会自动完成以下操作：
-
-- ✅ 检查 Docker 环境
-- ✅ 运行配置脚本（交互式配置）
-- ✅ 创建必要的目录
-- ✅ 检查必要文件（如 `product.pem`）
-- ✅ 自动登录 Docker 镜像仓库（从 `.env` 文件读取 `REGISTRY_USERNAME` 和 `REGISTRY_PASSWORD`）
-- ✅ 拉取 Docker 镜像
-
-> 💡 **提示**：
-> - 如果 `.env` 文件中已配置 `REGISTRY_USERNAME` 和 `REGISTRY_PASSWORD`，安装脚本会自动使用这些凭证登录
-> - 如果未配置，安装脚本会提示您输入 Docker Registry 的账号和密码，请使用客服提供的凭证
-> - 配置脚本会自动将 Docker Registry 凭证保存到 `.env` 文件中
-
-#### 4️⃣ 启动服务
-
-```bash
-chmod +x start.sh
-./start.sh
-```
-
-或者直接使用 Docker Compose：
-
-```bash
-docker compose up -d
-```
-
-这将自动启动所有服务，包括 etcd 认证初始化。
-
-#### 5️⃣ 验证部署
-
-```bash
-# 查看服务状态
-docker compose ps
-
-# 查看服务日志
-docker compose logs -f
-
-# 访问应用（配置完成后）
-# 浏览器访问：http://baklib.localhost
-```
-
-### 🎉 部署完成
-
-如果所有服务都正常运行，恭喜您！Baklib 私有化部署已完成。
-
-- 🌐 访问地址：`http://baklib.localhost`（根据您的配置）
-- 📊 查看 Traefik Dashboard：`http://localhost:8081`
-- 📝 查看日志：`docker compose logs -f [服务名]`
-
-#### 6️⃣ 安装模版到数据库（首次安装必选）
-
-系统安装并启动服务后，需将公开的 **Wiki 模板** 从 Gitee 仓库导入到数据库（首次安装必选，需在服务已正常启动后执行），便于在应用中选择使用：
-
-```bash
-./import-themes.sh
-```
-
-脚本会：
-
-1. 从 [https://gitee.com/baklib/theme-wiki](https://gitee.com/baklib/theme-wiki) 克隆主题到主题仓库卷
-2. 在 Web 容器内执行 `bin/rails themes:import dir=/rails/theme_repositories/theme-wiki` 将模板写入数据库
-
-**选项：**
-
-| 选项 | 说明 |
+| 要求 | 说明 |
 |------|------|
-| `--skip-clone` | 仅执行导入（主题目录已存在时使用） |
-| `--clone-only` | 仅克隆仓库，不执行导入 |
-| `-h, --help` | 显示帮助 |
+| Docker | 20.10+，且已启动 |
+| Docker Compose | 2.0+（或 docker-compose 1.29+） |
+| 内存 | 至少 8GB |
+| 磁盘 | 至少 20GB |
+| 凭证 | 已向客服申请并获得 Docker Registry 账号、密码及 `product.pem` 证书 |
 
-**环境变量：** 可通过 `THEME_WIKI_REPO`、`THEME_DIR_NAME` 覆盖默认仓库地址和目录名。
+### Linux / macOS 安装
 
-> 导入后无需重启服务，可直接在应用中使用模板。
+1. **进入项目目录**
+   ```bash
+   cd /path/to/baklib-docker
+   ```
+
+2. **赋予入口脚本可执行权限（首次建议执行）**
+   ```bash
+   chmod +x baklib
+   ```
+
+3. **放置证书**  
+   将客服提供的 `product.pem` 放到项目根目录。
+
+4. **配置**（交互式填写 `.env`，含主域名、存储、**管理员手机号**等；管理员手机号将作为首个用户登录账号，install 时写入数据库）
+   ```bash
+   ./baklib config
+   ```
+
+5. **安装**（登录仓库、拉取镜像；若在 config 中填写了管理员手机号，会临时启动 web 执行 `db:prepare` 并写入首个用户手机号，然后自动清理容器）
+   ```bash
+   ./baklib install
+   ```
+
+6. **启动服务**
+   ```bash
+   ./baklib start
+   ```
+
+7. **导入主题（首次安装必选，需服务已启动）**
+   ```bash
+   ./baklib import-themes
+   ```
+   可选：`./baklib import-themes --skip-clone`、`./baklib import-themes --clone-only`。
+
+8. **验证**  
+   浏览器访问配置的主域名（如 `http://baklib.localhost`），Traefik Dashboard：`http://localhost:8081`。
+
+### Windows 安装
+
+1. **安装并启动 Docker Desktop**  
+   从 [Docker Desktop](https://www.docker.com/products/docker-desktop/) 下载安装，确保 Docker 已运行。
+
+2. **进入项目目录**  
+   在 **命令提示符（CMD）** 或 **PowerShell** 中：
+   ```cmd
+   cd C:\path\to\baklib-docker
+   ```
+
+3. **放置证书**  
+   将客服提供的 `product.pem` 放到项目根目录（与 `baklib.cmd` 同目录）。
+
+4. **配置**（含**管理员手机号**，作为首个用户登录账号）
+   ```cmd
+   baklib.cmd config
+   ```
+
+5. **安装**（若已配置管理员手机号会临时启动 web 执行 db:prepare 并写入首个用户手机号，然后自动清理）
+   ```cmd
+   baklib.cmd install
+   ```
+
+6. **启动服务**
+   ```cmd
+   baklib.cmd start
+   ```
+
+7. **导入主题（首次安装必选）**
+   ```cmd
+   baklib.cmd import-themes
+   ```
+   可选：`baklib.cmd import-themes --skip-clone`、`baklib.cmd import-themes --clone-only`。
+
+8. **验证**  
+   浏览器访问配置的主域名，Traefik Dashboard：`http://localhost:8081`。
+
+> **说明**：`config` / `install` / `import-themes` 通过 Docker 运行 CLI 镜像（挂载项目目录与 Docker 套接字），首次会构建镜像 `baklib-cli:local`。
+
+---
+
+## 🔧 后期维护
+
+日常运维、改配置、升级、备份等，均可在项目根目录下用统一入口完成。
+
+| 操作 | Linux / macOS | Windows |
+|------|----------------|--------|
+| 启动服务 | `./baklib start` | `baklib.cmd start` |
+| 停止服务 | `./baklib stop` | `baklib.cmd stop` |
+| 重启服务 | `./baklib restart` | `baklib.cmd restart` |
+| 卸载（保留数据） | `./baklib uninstall` | `baklib.cmd uninstall` |
+| 彻底清理（删数据卷） | `./baklib clean` | `baklib.cmd clean` |
+| 重新配置 | `./baklib config` | `baklib.cmd config` |
+| 再次准备/拉取镜像 | `./baklib install` | `baklib.cmd install` |
+| 导入/更新主题 | `./baklib import-themes [选项]` | `baklib.cmd import-themes [选项]` |
+
+### 修改配置
+
+- **推荐**：运行 `./baklib config`（或 `baklib.cmd config`）交互式修改 `.env`，脚本会同步更新 Traefik 等配置。
+- **仅改 .env**：编辑 `.env` 后，执行 `./baklib config` 再跑一次并沿用现有值，或运行 `bash scripts/config.sh --non-interactive`（高级用法）；然后 **重启服务**：`./baklib restart` 或 `baklib.cmd restart`。
+
+### 更新应用版本
+
+1. 在 `.env` 中修改 `IMAGE_TAG` 为目标版本（如 `v1.32.0`）。
+2. 拉取镜像并重启：
+   - Linux/macOS：`docker compose pull` 然后 `./baklib restart`
+   - Windows：`docker compose pull` 然后 `baklib.cmd restart`
+
+### 备份与恢复
+
+- **数据库**：  
+  `docker compose exec db pg_dump -U postgres baklib_production > backup_$(date +%Y%m%d).sql`  
+  恢复：`docker compose exec -T db psql -U postgres baklib_production < backup_xxx.sql`
+- **数据卷**：PostgreSQL、Redis、ETCD、应用存储等均使用 Docker 命名卷，备份时需备份对应卷或使用 `docker run --rm -v 卷名:/data -v $(pwd):/backup alpine tar czf /backup/卷备份.tar.gz /data` 等方式导出。
+
+### 查看日志与排错
+
+- 所有服务：`docker compose logs -f`
+- 单个服务：`docker compose logs -f web`（或 `job`、`traefik`、`db` 等）
+- 服务状态：`docker compose ps`
+
+更多排错见 [常见问题](#-常见问题)。
+
+### 证书续期
+
+产品证书 `product.pem` 有效期为 1 年。到期前联系客服获取新证书，替换项目根目录下的 `product.pem` 后重启服务：`./baklib restart` 或 `baklib.cmd restart`。
+
+---
+
+### 📌 统一命令速查
+
+| 操作 | Linux/macOS | Windows | 说明 |
+|------|-------------|---------|------|
+| 配置 | `./baklib config` | `baklib.cmd config` | 生成/更新 .env，并同步 Traefik |
+| 安装 | `./baklib install` | `baklib.cmd install` | 准备：登录仓库、拉取镜像（需先 config） |
+| 启动 | `./baklib start` | `baklib.cmd start` | `docker compose up -d` |
+| 停止 | `./baklib stop` | `baklib.cmd stop` | `docker compose stop` |
+| 重启 | `./baklib restart` | `baklib.cmd restart` | `docker compose restart` |
+| 卸载 | `./baklib uninstall` | `baklib.cmd uninstall` | 停止并移除容器，保留 .env 与数据卷；彻底清空用 baklib clean |
+| 彻底清理 | `./baklib clean` | `baklib.cmd clean` | 删除容器、网络与数据卷（需 3 次验证码确认） |
+| 导入主题 | `./baklib import-themes [选项]` | `baklib.cmd import-themes [选项]` | 首次必选；选项：`--skip-clone`、`--clone-only` |
 
 ## 📁 目录结构
 
 ```
 baklib-docker/
 ├── README.md                      # 本文件
-├── docker-compose.yml             # Docker Compose 配置文件
+├── docker-compose.yml             # Docker Compose 主配置（应用栈）
+├── docker-compose.cli.yml         # CLI 配置（config / install / import-themes 服务）
+├── Dockerfile.cli                  # CLI 镜像（Debian + bash + docker + docker-compose）
 ├── .env.example                    # 环境变量配置示例
 │
-├── install.sh                     # 安装脚本
-├── config.sh                      # 配置脚本（交互式配置 .env）
-├── start.sh                       # 启动服务脚本
-├── restart.sh                     # 重启服务脚本
-├── stop.sh                        # 停止服务脚本
-├── clean.sh                       # 清理脚本（清理所有资源）
-├── import-themes.sh               # 导入主题模版到数据库（首次安装必选，需服务已正常启动后执行）
-├── test-config.sh                 # 配置测试脚本
-├── common.sh                      # 公共函数库
+├── baklib                         # 统一入口（Linux/macOS）：config | install | start | stop | restart | uninstall | clean | import-themes
+├── baklib.cmd                     # 统一入口（Windows）：同上
+├── scripts/                       # 内部脚本（由 baklib / CLI 容器调用，不建议直接执行）
+│   ├── config.sh                  # 配置 .env
+│   ├── install.sh                 # 准备镜像
+│   ├── start.sh                   # 启动（建议用 baklib start）
+│   ├── stop.sh                    # 停止（建议用 baklib stop）
+│   ├── restart.sh                 # 重启（建议用 baklib restart）
+│   ├── import-themes.sh           # 导入主题
+│   ├── clean.sh                   # 彻底清理（建议用 baklib clean）
+│   ├── test-config.sh             # 配置测试（开发用）
+│   └── common.sh                  # 公共函数库
 │
 ├── product.pem                    # 产品证书文件（需要创建）
 │
@@ -283,37 +333,29 @@ baklib-docker/
 
 ## 🛠️ 主要脚本
 
-### install.sh - 安装脚本
+> **说明**：以下脚本位于 `scripts/` 目录，由 **baklib** / **baklib.cmd** 或 CLI 容器调用。建议用户统一使用 `./baklib <子命令>` 或 `baklib.cmd <子命令>`，无需直接执行脚本。
 
-一键安装所有依赖和服务：
+### scripts/install.sh - 安装（准备）
 
-```bash
-./install.sh
-```
+通过 `./baklib install` 或 `baklib.cmd install` 调用。负责准备镜像（登录仓库、拉取镜像）；若在 config 中配置了 **管理员手机号（ADMIN_PHONE）**，会临时启动 web 容器（`run --rm web`）执行 `bin/rails db:prepare` 初始化数据库，再执行 rails runner 将首个用户登录手机号写入（User 的 `mobile_phone` 字段），然后自动停止并移除所有相关容器，安装完成时无容器在运行。**不执行 config**；需先运行 `config` 生成/更新 `.env` 后再执行。
 
 功能：
 - 检查 Docker 环境（Docker 和 Docker Compose）
-- 运行配置脚本（`config.sh`，如果 `.env` 不存在会创建）
-- 创建必要的目录
-- 检查必要文件（如 `product.pem`）
-- **自动登录 Docker 镜像仓库**（从 `.env` 文件读取 `REGISTRY_USERNAME` 和 `REGISTRY_PASSWORD`）
+- 检查 `.env` 存在（不存在则提示先执行 config）
+- 检查主栈 web 未在运行（已运行则提示先 uninstall）
+- **登录 Docker 镜像仓库**（从 `.env` 读取 `REGISTRY_USERNAME`、`REGISTRY_PASSWORD`）
 - 拉取 Docker 镜像
+- **若已配置 ADMIN_PHONE**：`run --rm web bin/rails db:prepare` → `run --rm web` 写入首个用户手机号 → `down` 清理容器
 
-**注意**：
-- 如果 `.env` 文件中已配置 Docker Registry 凭证，会自动使用
-- 如果未配置，会提示输入凭证，并保存到 `.env` 文件
+**步骤顺序**：先 `config`（生成/更新 .env，可填管理员手机号）→ 再 `install`（准备镜像，可选执行 db:prepare 并写入首个用户）→ 再 `start` → `import-themes`
 
-### config.sh - 配置脚本
+### scripts/config.sh - 配置脚本
 
-交互式配置 `.env` 文件：
-
-```bash
-./config.sh
-```
+通过 `./baklib config` 或 `baklib.cmd config` 调用。交互式配置 `.env` 文件。
 
 功能：
 - 如果 `.env` 不存在，从 `.env.example` 创建（如果 `.env.example` 不存在会报错，需要先创建 `.env` 文件）
-- 交互式提示输入各项配置
+- 交互式提示输入各项配置，含 **管理员手机号（ADMIN_PHONE）**：作为首个用户登录账号，`install` 时会执行 db:prepare 并写入数据库
 - **自动检测本地试用环境**：如果主域名为 `baklib.localhost`，自动配置本地环境参数（`SHOW_VERIFICATION_CODE=y`、`INGRESS_PROTOCOL=http`、`INGRESS_PORT=80`、关闭 HTTPS）
 - 自动生成 `SECRET_KEY_BASE`
 - **自动更新 Traefik 配置文件**：
@@ -325,66 +367,28 @@ baklib-docker/
   - 本地存储：`readTimeout` 设置为 20 分钟，`maxRequestBodyBytes` 设置为 10GB
   - 云存储：`readTimeout` 设置为 5 分钟，`maxRequestBodyBytes` 设置为 100MB
 - **验证 `.env` 文件语法**：自动检查语法错误（未匹配的引号、变量名格式等）
-- 支持非交互模式：`./config.sh --non-interactive`（从 `.env` 文件读取配置并更新 Traefik 配置）
+- 支持非交互模式：`./baklib config` 时由脚本内部处理，或直接运行 `bash scripts/config.sh --non-interactive`（高级用法）
 
-### start.sh - 启动脚本
+### scripts/start.sh、stop.sh、restart.sh
 
-启动所有服务：
+通过 `./baklib start`、`./baklib stop`、`./baklib restart` 调用（baklib 直接执行 `docker compose`，不经过脚本）。脚本保留在 `scripts/` 供兼容或高级用法。
 
-```bash
-./start.sh
-```
+### scripts/import-themes.sh - 导入主题（模版）
 
-功能：
-- 检查 .env 文件和 Docker 环境
-- 自动启动所有服务（db、redis、etcd、web、job、traefik）
-- 自动初始化 ETCD 认证（如果配置了密码）
-- 所有服务会等待 etcd-init 完成后再启动
-
-### restart.sh - 重启脚本
-
-重启所有服务：
-
-```bash
-./restart.sh
-```
-
-### stop.sh - 停止脚本
-
-停止所有服务：
-
-```bash
-./stop.sh
-```
-
-### import-themes.sh - 导入主题（模版）
-
-首次安装必选。需在服务已正常启动后执行，将 Gitee 上的 Wiki 模板导入到数据库：
-
-```bash
-./import-themes.sh
-```
+通过 `./baklib import-themes` 或 `baklib.cmd import-themes` 调用。首次安装必选，需在服务已正常启动后执行。
 
 功能：
 - 从 [Gitee theme-wiki](https://gitee.com/baklib/theme-wiki) 克隆主题到主题仓库卷
 - 在 Web 容器内执行 `bin/rails themes:import dir=...` 写入数据库
 - 支持 `--skip-clone`（仅导入）、`--clone-only`（仅克隆）
 
-### clean.sh - 清理脚本
+### scripts/clean.sh - 彻底清理
 
-清理所有容器、网络和数据卷（**危险操作**）：
-
-```bash
-./clean.sh
-```
+通过 `./baklib clean` 或 `baklib.cmd clean` 调用。清理所有容器、网络和数据卷（**危险操作**）。入口会传入当前目录名作为 `COMPOSE_PROJECT_NAME`，使在容器内执行的 `docker compose down -v` 能正确清理宿主机上的同一项目。
 
 **⚠️ 警告**：此操作会删除所有数据，包括数据库数据，请确保已备份！
 
-**安全机制**：
-- 需要连续输入 **3 次不同的验证码** 才能执行清理操作
-- 每次验证码都是随机生成的 4 位数字
-- 如果验证码输入错误，会重置确认次数，需要重新开始
-- 这是为了防止误操作导致数据丢失
+**安全机制**：需要连续输入 **3 次不同的验证码** 才能执行清理操作。
 
 ### ETCD 认证初始化
 
@@ -490,7 +494,7 @@ Traefik 反向代理服务，负责路由和负载均衡。
 
 ### 环境变量配置
 
-主要配置项在 `.env` 文件中，通过 `config.sh` 脚本进行交互式配置。
+主要配置项在 `.env` 文件中，通过 `./baklib config`（或 `scripts/config.sh`）进行交互式配置。
 
 #### 必填配置项
 
@@ -563,15 +567,23 @@ Traefik 配置文件位于 `traefik/etc/` 目录：
 
 **重要提示**：
 - **配置脚本会自动更新 Traefik 配置文件**，无需手动修改
-- `config.sh` 会自动同步以下配置：
+- 运行 `./baklib config`（内部调用 `config.sh`）会自动同步以下配置：
   - `traefik.yml`: ETCD 密码、证书解析器、ACME 邮箱、readTimeout（根据存储类型）
   - `common.yml`: HTTP 到 HTTPS 重定向、请求体大小限制（根据存储类型）
   - `traefik-dashboard.yml`: 域名、entryPoints、TLS 配置
   - `docker-compose.yml`: Traefik 路由配置（entryPoints、TLS）
-- 如果手动修改了 Traefik 配置文件，运行 `./config.sh` 会覆盖您的修改
+- 如果手动修改了 Traefik 配置文件，运行 `./baklib config` 会覆盖您的修改
 - 如果使用 ACME DNS 挑战，需要配置 `DNS_ALIYUN_ACCESS_KEY` 和 `DNS_ALIYUN_SECRET_KEY`
 
 ## ❓ 常见问题
+
+### 0. 提示“服务已在运行”或 “已存在”？
+
+**start**：若服务已启动，执行 `./baklib start`（或 `baklib.cmd start`）时会**直接退出并提示**“服务已在运行，无需重复启动”；如需重启请使用 `./baklib restart`（或 `baklib.cmd restart`）。
+
+**install**：若服务已启动，执行 `./baklib install`（或 `baklib.cmd install`）时会**直接退出并提示**先执行 stop 再执行 install，或若仅需更新镜像则修改 `.env` 中 `IMAGE_TAG` 后执行 `docker compose pull` 再执行 restart。
+
+若未通过 baklib 而直接执行 `docker compose up -d`，可能看到“已存在”（already exists）等提示，属正常现象；建议日常统一使用 baklib/baklib.cmd，以便获得上述检查与提示。使用 `./baklib install` 时若出现 “Found orphan containers” 警告，是因为主栈已在运行、当前命令使用 `docker-compose.cli.yml`，可忽略。
 
 ### 1. 如何查看服务日志？
 
@@ -605,7 +617,9 @@ docker compose exec redis redis-cli
 docker compose pull
 
 # 重新创建并启动服务
-./restart.sh
+./baklib restart   # Linux/macOS
+# 或
+baklib.cmd restart # Windows
 ```
 
 ### 4. 如何备份数据？
@@ -653,22 +667,26 @@ docker compose up -d etcd-init
 
 ### 7. 如何修改配置？
 
+**推荐**：使用统一入口交互式修改并同步 Traefik 配置后重启。
+
+- **Linux/macOS**：`./baklib config`，然后 `./baklib restart`
+- **Windows**：`baklib.cmd config`，然后 `baklib.cmd restart`
+
+也可直接使用脚本或手动改 `.env`：
+
 ```bash
 # 重新运行配置脚本（推荐）
-./config.sh
+./baklib config   # 或 baklib.cmd config（Windows）
 
-# 或手动编辑 .env 文件
-vim .env
-
-# 如果手动修改了 .env，建议运行非交互模式更新 Traefik 配置
-./config.sh --non-interactive
+# 或手动编辑 .env 后，用非交互模式仅更新 Traefik 配置（Linux/macOS）
+./baklib config
 
 # 修改后重启服务
-./restart.sh
+./baklib restart  # 或 baklib.cmd restart（Windows）
 ```
 
 **注意**：
-- 如果只修改了 `.env` 文件，运行 `./config.sh --non-interactive` 会自动更新 Traefik 配置文件
+- 如果只修改了 `.env` 文件，运行 `./baklib config`（Linux/macOS）会自动更新 Traefik 配置文件
 - 配置脚本会自动验证 `.env` 文件语法，如果发现错误会提示修复
 
 ### 8. 如何使用 Shell 调试服务？
@@ -699,7 +717,7 @@ etcdctl --endpoints=$ETCD_ENDPOINTS --user=$ETCD_USER:$ETCD_PASSWORD endpoint he
 
 ```bash
 # 检查 .env 文件语法
-./config.sh --non-interactive
+./baklib config
 
 # 如果提示语法错误，检查：
 # 1. 未匹配的引号（单引号或双引号）
@@ -715,7 +733,7 @@ etcdctl --endpoints=$ETCD_ENDPOINTS --user=$ETCD_USER:$ETCD_PASSWORD endpoint he
 ## 📚 相关文档
 
 - [Traefik 配置说明](traefik/README.md) - Traefik 反向代理配置说明
-- 环境变量配置：通过 `./config.sh` 脚本交互式配置，或参考 `docker-compose.yml` 中的环境变量定义
+- 环境变量配置：通过 `./baklib config` 交互式配置，或参考 `docker-compose.yml` 中的环境变量定义
 
 ## ⚠️ 注意事项
 
@@ -736,7 +754,7 @@ etcdctl --endpoints=$ETCD_ENDPOINTS --user=$ETCD_USER:$ETCD_PASSWORD endpoint he
 7. **资源限制**：根据实际服务器配置调整 CPU 和内存限制（通过 `WEB_CONCURRENCY` 和 `WEB_MEMORY` 环境变量）
 8. **网络安全**：确保数据库和 Redis 不对外暴露端口
 9. **Docker Registry**：妥善保管 Docker Registry 账号密码，不要泄露
-10. **Traefik 配置**：不要手动修改 Traefik 配置文件，使用 `config.sh` 脚本自动更新
+10. **Traefik 配置**：不要手动修改 Traefik 配置文件，使用 `./baklib config` 自动更新
 11. **本地试用环境**：使用 `baklib.localhost` 作为主域名时，系统会自动配置本地环境参数，无需手动设置 HTTPS
 12. **存储类型影响**：选择不同的存储类型会影响 Traefik 的超时和请求体大小限制，配置脚本会自动调整
 

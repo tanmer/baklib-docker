@@ -3,9 +3,10 @@
 # Docker Compose 清理脚本
 # 用于清理所有容器、网络和数据卷
 
-# 获取脚本所在目录
+# 从脚本所在目录定位项目根（与 common.sh 一致，便于在 scripts/ 下运行）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
 
 # 生成随机验证码（4位数字）
 generate_verification_code() {

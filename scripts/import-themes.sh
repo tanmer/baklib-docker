@@ -43,7 +43,7 @@ check_command docker
 check_docker_running
 
 if [ ! -f ".env" ]; then
-    print_error "未找到 .env 文件，请先运行 ./config.sh 或完成安装"
+    print_error "未找到 .env 文件，请先运行 ./baklib config 或完成安装"
     exit 1
 fi
 
@@ -57,7 +57,7 @@ if [ "$SKIP_CLONE" = false ]; then
         THEME_VOLUME=$(docker volume ls --format '{{.Name}}' | grep 'baklib-theme-repositories' | head -1)
     fi
     if [ -z "$THEME_VOLUME" ]; then
-        print_error "无法获取主题卷名称，请先执行 ./start.sh 启动服务后再运行本脚本"
+        print_error "无法获取主题卷名称，请先执行 ./baklib start 启动服务后再运行本脚本"
         exit 1
     fi
     print_info "将 theme-wiki 克隆到主题仓库卷..."
@@ -70,9 +70,13 @@ fi
 
 [ "$CLONE_ONLY" = true ] && exit 0
 
-# 2. 确保 web 服务在运行
+# 2. 确保 web 服务在运行（使用与宿主机一致的 COMPOSE_PROJECT_NAME，由 baklib/baklib.cmd 传入）
 if ! $COMPOSE_CMD ps web --status running 2>/dev/null | grep -q web; then
-    print_error "Web 服务未运行，请先执行 ./start.sh 启动服务"
+    print_error "Web 服务未运行，请先执行 ./baklib start 启动服务"
+    if [ -n "${COMPOSE_PROJECT_NAME:-}" ]; then
+        echo "  当前项目名: COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME}"
+        echo "  请确保在与执行 start 时相同的目录下运行 import-themes。"
+    fi
     exit 1
 fi
 
