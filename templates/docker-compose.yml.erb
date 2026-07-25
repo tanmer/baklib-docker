@@ -81,13 +81,13 @@ x-baklib-common: &baklib-common
     STORAGE_QINIU_PROTOCOL: ${STORAGE_QINIU_PROTOCOL:-}
     STORAGE_QINIU_DOMAIN: ${STORAGE_QINIU_DOMAIN:-}
     # 阿里云存储配置
-    STORAGE_ALIIYUN_ACCESS_KEY: ${STORAGE_ALIIYUN_ACCESS_KEY:-}
-    STORAGE_ALIIYUN_SECRET_KEY: ${STORAGE_ALIIYUN_SECRET_KEY:-}
-    STORAGE_ALIIYUN_BUCKET: ${STORAGE_ALIIYUN_BUCKET:-}
-    STORAGE_ALIIYUN_ENDPOINT: ${STORAGE_ALIIYUN_ENDPOINT:-}
-    STORAGE_ALIIYUN_CDN_HOST: ${STORAGE_ALIIYUN_CDN_HOST:-}
-    STORAGE_ALIIYUN_CDN_KEY: ${STORAGE_ALIIYUN_CDN_KEY:-}
-    STORAGE_ALIIYUN_PUBLIC: ${STORAGE_ALIIYUN_PUBLIC:-}
+    STORAGE_ALIYUN_ACCESS_KEY: ${STORAGE_ALIYUN_ACCESS_KEY:-}
+    STORAGE_ALIYUN_SECRET_KEY: ${STORAGE_ALIYUN_SECRET_KEY:-}
+    STORAGE_ALIYUN_BUCKET: ${STORAGE_ALIYUN_BUCKET:-}
+    STORAGE_ALIYUN_ENDPOINT: ${STORAGE_ALIYUN_ENDPOINT:-}
+    STORAGE_ALIYUN_CDN_HOST: ${STORAGE_ALIYUN_CDN_HOST:-}
+    STORAGE_ALIYUN_CDN_KEY: ${STORAGE_ALIYUN_CDN_KEY:-}
+    STORAGE_ALIYUN_PUBLIC: ${STORAGE_ALIYUN_PUBLIC:-}
     # AWS 存储配置
     STORAGE_AWS_ACCESS_KEY: ${STORAGE_AWS_ACCESS_KEY:-}
     STORAGE_AWS_SECRET_KEY: ${STORAGE_AWS_SECRET_KEY:-}
@@ -181,18 +181,37 @@ services:
       namespace: baklib
       traefik.enable: "true"
       traefik.http.routers.baklib-web.rule: "Host(`${MAIN_DOMAIN}`)"
-      traefik.http.routers.baklib-web.entryPoints: "http"
+      traefik.http.routers.baklib-web.entryPoints: "<%= traefik_entry_point %>"
       traefik.http.routers.baklib-web.middlewares: "baklib-default@file"
+<% if https_enabled? -%>
+      traefik.http.routers.baklib-web.tls: "true"
+<% else -%>
       #traefik.http.routers.baklib-web.tls: "true"
+<% end -%>
       traefik.http.routers.baklib-saas.rule: "HostRegexp(`[a-z0-9-]+${SAAS_DOMAIN_SUFFIX}`)"
-      traefik.http.routers.baklib-saas.entryPoints: "http"
+      traefik.http.routers.baklib-saas.entryPoints: "<%= traefik_entry_point %>"
       traefik.http.routers.baklib-saas.middlewares: "baklib-default@file"
+<% if https_enabled? -%>
+      traefik.http.routers.baklib-saas.tls: "true"
+<% else -%>
+      #traefik.http.routers.baklib-saas.tls: "true"
+<% end -%>
       traefik.http.routers.baklib-api.rule: "Host(`open.${MAIN_DOMAIN}`)"
-      traefik.http.routers.baklib-api.entryPoints: "http"
+      traefik.http.routers.baklib-api.entryPoints: "<%= traefik_entry_point %>"
       traefik.http.routers.baklib-api.middlewares: "baklib-default@file"
+<% if https_enabled? -%>
+      traefik.http.routers.baklib-api.tls: "true"
+<% else -%>
+      #traefik.http.routers.baklib-api.tls: "true"
+<% end -%>
       traefik.http.routers.baklib-trial.rule: "HostRegexp(`[a-z0-9-]+${FREE_DOMAIN_SUFFIX}`)"
-      traefik.http.routers.baklib-trial.entryPoints: "http"
+      traefik.http.routers.baklib-trial.entryPoints: "<%= traefik_entry_point %>"
       traefik.http.routers.baklib-trial.middlewares: "baklib-default@file"
+<% if https_enabled? -%>
+      traefik.http.routers.baklib-trial.tls: "true"
+<% else -%>
+      #traefik.http.routers.baklib-trial.tls: "true"
+<% end -%>
     deploy:
       resources:
         limits:

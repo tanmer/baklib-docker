@@ -35,11 +35,11 @@ alwaysApply: true
    - **名称/身份相关**：真实客户/公司名、内部项目/系统/团队名、内部域名（如 `*.internal`、`*.corp`）、真实邮箱/手机、未脱敏的客户 ID 或昵称；截图/文档中的联系人、组织架构等
 4. **若发现敏感信息**：
    - 立即告知用户，**不要执行 commit/push**
-   - 建议：从暂存移除（`git restore --staged <file>`）、将文件加入 `.gitignore`、用环境变量或 `.env.example` 占位
+   - 建议：从暂存移除（`git restore --staged <file>`）、将文件加入 `.gitignore`、用环境变量或模板中的占位符（如 `templates/env_defaults.env` 不含真实密钥）
 
 ## 正确做法示例
 
-- ✅ 提交 `.env.example`（占位、无真实密钥），不提交 `.env`
+- ✅ 提交 `templates/env_defaults.env` / `templates/.env.erb` 等占位模板（无真实密钥），不提交 `.env`
 - ✅ 私钥、证书仅放在本地或安全存储，并在 `.gitignore` 中忽略
 - ✅ 代码中通过环境变量读取密钥，不硬编码
 - ✅ 示例/占位用通用名称（如「示例公司」「客户 A」「user@example.com」），不写真实客户名、内部项目名、内部邮箱

@@ -1,17 +1,53 @@
-# Baklib CLI：配置 / 安装 / 导入主题 等命令
-# 使用已发布的 CLI 镜像（BAKLIB_CLI_IMAGE），不本地构建，避免国内环境拉取 debian/apt 源失败。
-# 用法示例：
+# Baklib CLI：配置 / 安装 / 导入主题 / 清理（均在项目根目录执行）
+#
+# 镜像来源（两种用法，本文件同时支持）：
+# 1) 使用已发布镜像（默认）：设置或不设置 BAKLIB_CLI_IMAGE，先 pull 再 run
+#      docker compose -f docker-compose.cli.yml pull
+# 2) 维护者本地调试（固定 tag baklib-cli:dev，勿当作用户路径）：
+#      ./scripts/build-dev-cli
+#      ./scripts/run-dev-cli
+#
+# ── 常用命令 ─────────────────────────────────────────────────────────
+# 亦可使用薄封装（与下列命令等价）：
+#   ./scripts/cli.sh <config|install|start|stop|restart|uninstall|clean|import-themes>
+#   scripts\cli.cmd <同上>   （Windows CMD）
+# 配置（交互生成 .env 并渲染 Traefik / Compose）：
 #   docker compose -f docker-compose.cli.yml run --rm config
-#   docker compose -f docker-compose.cli.yml run --rm install
-#   docker compose -f docker-compose.cli.yml run --rm import-themes [--skip-clone|--clone-only]
-# 启动/停止/重启主栈仍在项目目录执行：
+# 安装（需已 config；传入项目名与宿主机路径供容器内 compose 使用）：
+#   COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}" \
+#   HOST_PROJECT_ROOT="$PWD" \
+#   docker compose -f docker-compose.cli.yml run --rm \
+#     -e COMPOSE_PROJECT_NAME -e HOST_PROJECT_ROOT install
+# 启动 / 停止 / 重启主栈（使用根目录 docker-compose.yml，非本文件）：
 #   docker compose up -d
 #   docker compose stop
 #   docker compose restart
+# 卸载（保留 .env 与数据卷）：
+#   COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}" \
+#   docker compose -f docker-compose.yml down --remove-orphans
+# 彻底清理（删数据卷，需三次确认）：
+#   COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}" \
+#   docker compose -f docker-compose.cli.yml run --rm -e COMPOSE_PROJECT_NAME clean
+# 导入主题（首次必选；可选 SKIP_CLONE=1、CLONE_ONLY=1）：
+#   COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$PWD")}" \
+#   docker compose -f docker-compose.cli.yml run --rm \
+#     -e COMPOSE_PROJECT_NAME -e SKIP_CLONE -e CLONE_ONLY \
+#     -e THEME_WIKI_REPO -e THEME_DIR_NAME -e BAKLIB_CLI_IMAGE \
+#     import-themes
+
+# 四个服务共用同一镜像定义：image（拉取/运行名）+ build（本地构建来源）
+# 使用 /usr/local/bin/ruby -S rake：勿直接 exec /usr/local/bundle/bin/rake（其为 shebang 脚本，tini 下易报 No such file or directory）
+x-baklib-cli-image: &baklib_cli_image
+  image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
+  build:
+    context: .
+    dockerfile: Dockerfile.cli
+  environment:
+    PATH: /usr/local/bundle/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 services:
   config:
-    image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
+    <<: *baklib_cli_image
     container_name: baklib-cli-config
     stdin_open: true
     tty: true
@@ -19,10 +55,10 @@ services:
     working_dir: /work
     volumes:
       - .:/work
-    command: ["bash", "./scripts/config.sh"]
+    command: ["/usr/local/bin/ruby", "-S", "rake", "config"]
 
   install:
-    image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
+    <<: *baklib_cli_image
     container_name: baklib-cli-install
     stdin_open: true
     tty: true
@@ -31,10 +67,10 @@ services:
     volumes:
       - .:/work
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ["bash", "./scripts/install.sh"]
+    command: ["/usr/local/bin/ruby", "-S", "rake", "install"]
 
   import-themes:
-    image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
+    <<: *baklib_cli_image
     container_name: baklib-cli-import-themes
     stdin_open: true
     tty: true
@@ -43,10 +79,10 @@ services:
     volumes:
       - .:/work
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ["bash", "./scripts/import-themes.sh"]
+    command: ["/usr/local/bin/ruby", "-S", "rake", "import_themes"]
 
   clean:
-    image: ${BAKLIB_CLI_IMAGE:-registry.devops.tanmer.com/library/baklib-cli:latest}
+    <<: *baklib_cli_image
     container_name: baklib-cli-clean
     stdin_open: true
     tty: true
@@ -55,4 +91,4 @@ services:
     volumes:
       - .:/work
       - /var/run/docker.sock:/var/run/docker.sock
-    command: ["bash", "./scripts/clean.sh"]
+    command: ["/usr/local/bin/ruby", "-S", "rake", "clean"]

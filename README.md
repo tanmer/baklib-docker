@@ -6,7 +6,7 @@
 
 [![Docker](https://img.shields.io/badge/Docker-20.10+-blue.svg)](https://www.docker.com/)
 [![Docker Compose](https://img.shields.io/badge/Docker%20Compose-2.0+-blue.svg)](https://docs.docker.com/compose/)
-[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](#许可证)
 
 </div>
 
@@ -77,7 +77,8 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 - [后期维护](#-后期维护)
 - [统一命令速查](#-统一命令速查)
 - [目录结构](#目录结构)
-- [主要脚本](#主要脚本)
+- [Docker Compose 与 Rake](#-docker-compose-与-rake)
+- [主要脚本与实现说明](#主要脚本与实现说明)
 - [服务说明](#服务说明)
 - [配置说明](#配置说明)
 - [常见问题](#常见问题)
@@ -103,7 +104,7 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 
 - **自动化配置**：交互式配置脚本，自动生成环境变量文件
 - **智能配置**：自动检测本地试用环境（`baklib.localhost`），自动配置相关参数
-- **自动更新 Traefik**：配置脚本自动同步 Traefik 配置文件，无需手动修改
+- **自动更新 Traefik**：`docker compose -f docker-compose.cli.yml run --rm config` 根据 `.env` 将 **`templates/`** 下 `*.yml.erb` 渲染为实际使用的 YAML，无需用 sed 改写配置
 - **配置验证**：自动验证 `.env` 文件语法，防止配置错误
 - **灵活配置**：支持多种存储、邮件、短信服务配置
 - **存储优化**：根据存储类型自动调整 Traefik 超时和请求体大小限制
@@ -124,14 +125,23 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 
 1. **克隆或下载项目**：`git clone <repository-url>` 并 `cd baklib-docker`。
 2. **准备凭证**：向客服申请试用账号，获取 Docker Registry 账号/密码及 `product.pem` 证书；安装并启动 Docker（20.10+）与 Docker Compose（2.0+）。
-3. **按平台安装**：请查看 **[安装与使用（按平台）](#-安装与使用按平台)**，按 Linux/macOS 或 Windows 步骤执行（使用 `baklib` 或 `baklib.cmd` 完成配置、安装、启动及首次导入主题）。
+3. **按平台安装**：请查看 **[安装与使用（按平台）](#-安装与使用按平台)**。推荐使用 **`./scripts/cli.sh`**（Windows：`scripts\cli.cmd`），与 `docker compose` 长命令等价（见 **`docker-compose.cli.yml` 顶部注释**）。**注意**：`docker-compose.yml` 与 `traefik/**` 下由模板生成的 YAML **不在仓库中**（见 `.gitignore`），须先执行 **config** 在本地生成后再 `install` / `start`。
 4. **部署完成后**：访问配置的主域名（如 `http://baklib.localhost`）、Traefik Dashboard：`http://localhost:8081`；日常维护见 **[后期维护](#-后期维护)**。
+
+> **迁移说明（旧版本用户）**：根目录入口脚本 **`baklib` / `baklib.cmd` 已移除**。请改用：
+> | 旧命令 | 新命令 |
+> |--------|--------|
+> | `./baklib config` | `./scripts/cli.sh config` |
+> | `./baklib install` | `./scripts/cli.sh install` |
+> | `./baklib start` / `stop` / `restart` | `./scripts/cli.sh start` 等 |
+> | `./baklib import-themes` | `./scripts/cli.sh import-themes` |
+> | `./baklib clean` / `uninstall` | `./scripts/cli.sh clean` / `uninstall` |
 
 ---
 
 ## 📦 安装与使用（按平台）
 
-以下按 **Linux / macOS** 与 **Windows** 分别说明安装步骤；日常维护命令见 [后期维护](#-后期维护)。
+以下按 **Linux / macOS** 与 **Windows** 分别说明安装步骤；日常维护命令见 [后期维护](#-后期维护)。**推荐优先使用 `./scripts/cli.sh`（或 `scripts\cli.cmd`）**，可自动设置 `COMPOSE_PROJECT_NAME`。
 
 ### 前置要求（通用）
 
@@ -148,38 +158,34 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 1. **进入项目目录**
    ```bash
    cd /path/to/baklib-docker
+   chmod +x scripts/cli.sh   # 首次建议执行
    ```
 
-2. **赋予入口脚本可执行权限（首次建议执行）**
-   ```bash
-   chmod +x baklib
-   ```
-
-3. **放置证书**  
+2. **放置证书**  
    将客服提供的 `product.pem` 放到项目根目录。
 
-4. **配置**（交互式填写 `.env`，含主域名、存储、**管理员手机号**等；管理员手机号将作为首个用户登录账号，install 时写入数据库）
+3. **配置**（交互式填写 `.env`，含主域名、存储、**管理员手机号**等；管理员手机号将作为首个用户登录账号，install 时写入数据库）
    ```bash
-   ./baklib config
+   ./scripts/cli.sh config
    ```
 
-5. **安装**（登录仓库、拉取镜像；若在 config 中填写了管理员手机号，会临时启动 web 执行 `db:prepare` 并写入首个用户手机号，然后自动清理容器）
+4. **安装**（登录仓库、拉取镜像；若在 config 中填写了管理员手机号，会临时启动 web 执行 `db:prepare` 并写入首个用户手机号，然后自动清理容器）
    ```bash
-   ./baklib install
+   ./scripts/cli.sh install
    ```
 
-6. **启动服务**
+5. **启动服务**
    ```bash
-   ./baklib start
+   ./scripts/cli.sh start
    ```
 
-7. **导入主题（首次安装必选，需服务已启动）**
+6. **导入主题（首次安装必选，需服务已启动）**
    ```bash
-   ./baklib import-themes
+   ./scripts/cli.sh import-themes
    ```
-   可选：`./baklib import-themes --skip-clone`、`./baklib import-themes --clone-only`。
+   可选：`./scripts/cli.sh import-themes --skip-clone`、`./scripts/cli.sh import-themes --clone-only`。
 
-8. **验证**  
+7. **验证**  
    浏览器访问配置的主域名（如 `http://baklib.localhost`），Traefik Dashboard：`http://localhost:8081`。
 
 ### Windows 安装
@@ -194,62 +200,62 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
    ```
 
 3. **放置证书**  
-   将客服提供的 `product.pem` 放到项目根目录（与 `baklib.cmd` 同目录）。
+   将客服提供的 `product.pem` 放到项目根目录。
 
 4. **配置**（含**管理员手机号**，作为首个用户登录账号）
    ```cmd
-   baklib.cmd config
+   scripts\cli.cmd config
    ```
 
-5. **安装**（若已配置管理员手机号会临时启动 web 执行 db:prepare 并写入首个用户手机号，然后自动清理）
+5. **安装**
    ```cmd
-   baklib.cmd install
+   scripts\cli.cmd install
    ```
 
 6. **启动服务**
    ```cmd
-   baklib.cmd start
+   scripts\cli.cmd start
    ```
 
 7. **导入主题（首次安装必选）**
    ```cmd
-   baklib.cmd import-themes
+   scripts\cli.cmd import-themes
    ```
-   可选：`baklib.cmd import-themes --skip-clone`、`baklib.cmd import-themes --clone-only`。
+   可选：`scripts\cli.cmd import-themes --skip-clone`、`scripts\cli.cmd import-themes --clone-only`。
 
 8. **验证**  
    浏览器访问配置的主域名，Traefik Dashboard：`http://localhost:8081`。
 
-> **说明**：`config` / `install` / `import-themes` 使用**已发布的 CLI 镜像**（由项目预构建，见 `.env` 中 `BAKLIB_CLI_IMAGE`），无需本地构建，避免国内环境拉取 debian/apt 源失败。
+> **说明**：`config` / `install` / `import-themes` 使用**已发布的 CLI 镜像**（由项目预构建，见 `.env` 中 `BAKLIB_CLI_IMAGE`），无需本地构建，避免国内环境拉取 debian/apt 源失败。若本地调试 CLI 镜像，见 `docs/develop.md`。
 
 ---
 
 ## 🔧 后期维护
 
-日常运维、改配置、升级、备份等，均可在项目根目录下用统一入口完成。
+日常运维、改配置、升级、备份等，推荐用 **`./scripts/cli.sh`**（Windows：`scripts\cli.cmd`）；完整 `docker compose` 一行命令见 **`docker-compose.cli.yml` 文件顶部注释**。
 
-| 操作 | Linux / macOS | Windows |
-|------|----------------|--------|
-| 启动服务 | `./baklib start` | `baklib.cmd start` |
-| 停止服务 | `./baklib stop` | `baklib.cmd stop` |
-| 重启服务 | `./baklib restart` | `baklib.cmd restart` |
-| 卸载（保留数据） | `./baklib uninstall` | `baklib.cmd uninstall` |
-| 彻底清理（删数据卷） | `./baklib clean` | `baklib.cmd clean` |
-| 重新配置 | `./baklib config` | `baklib.cmd config` |
-| 再次准备/拉取镜像 | `./baklib install` | `baklib.cmd install` |
-| 导入/更新主题 | `./baklib import-themes [选项]` | `baklib.cmd import-themes [选项]` |
+| 操作 | 命令 |
+|------|------|
+| 启动服务 | `./scripts/cli.sh start` |
+| 停止服务 | `./scripts/cli.sh stop` |
+| 重启服务 | `./scripts/cli.sh restart` |
+| 卸载（保留数据） | `./scripts/cli.sh uninstall` |
+| 彻底清理（删数据卷） | `./scripts/cli.sh clean` |
+| 重新配置 | `./scripts/cli.sh config` |
+| 再次准备/拉取镜像 | `./scripts/cli.sh install` |
+| 导入/更新主题 | `./scripts/cli.sh import-themes` |
 
 ### 修改配置
 
-- **推荐**：运行 `./baklib config`（或 `baklib.cmd config`）交互式修改 `.env`，脚本会同步更新 Traefik 等配置。
-- **仅改 .env**：编辑 `.env` 后，执行 `./baklib config` 再跑一次并沿用现有值，或运行 `bash scripts/config.sh --non-interactive`（高级用法）；然后 **重启服务**：`./baklib restart` 或 `baklib.cmd restart`。
+- **推荐**：运行 `./scripts/cli.sh config` 交互式修改 `.env`，会同步更新 Traefik 等配置。
+- **仅改 .env**：编辑 `.env` 后，再执行一次 `./scripts/cli.sh config` 并沿用现有值，或使用非交互：`NON_INTERACTIVE_MODE=true rake config` / `rake config -- --non-interactive`（高级用法）；然后 **重启服务**：`./scripts/cli.sh restart`。
 
 ### 更新应用版本
 
 1. 在 `.env` 中修改 `IMAGE_TAG` 为目标版本（如 `v1.32.0`）。
 2. 拉取镜像并重启：
-   - Linux/macOS：`docker compose pull` 然后 `./baklib restart`
-   - Windows：`docker compose pull` 然后 `baklib.cmd restart`
+   - Linux/macOS：`docker compose pull` 然后 `docker compose restart`
+   - Windows：`docker compose pull` 然后 `docker compose restart`
 
 ### 备份与恢复
 
@@ -268,57 +274,69 @@ Baklib 私有化部署允许个人用户在本地环境运行完整的 Baklib �
 
 ### 证书续期
 
-产品证书 `product.pem` 有效期为 1 年。到期前联系客服获取新证书，替换项目根目录下的 `product.pem` 后重启服务：`./baklib restart` 或 `baklib.cmd restart`。
+产品证书 `product.pem` 有效期为 1 年。到期前联系客服获取新证书，替换项目根目录下的 `product.pem` 后重启服务：`./scripts/cli.sh restart`。
 
 ---
 
 ### 📌 统一命令速查
 
-| 操作 | Linux/macOS | Windows | 说明 |
-|------|-------------|---------|------|
-| 配置 | `./baklib config` | `baklib.cmd config` | 生成/更新 .env，并同步 Traefik |
-| 安装 | `./baklib install` | `baklib.cmd install` | 准备：登录仓库、拉取镜像（需先 config） |
-| 启动 | `./baklib start` | `baklib.cmd start` | `docker compose up -d` |
-| 停止 | `./baklib stop` | `baklib.cmd stop` | `docker compose stop` |
-| 重启 | `./baklib restart` | `baklib.cmd restart` | `docker compose restart` |
-| 卸载 | `./baklib uninstall` | `baklib.cmd uninstall` | 停止并移除容器，保留 .env 与数据卷；彻底清空用 baklib clean |
-| 彻底清理 | `./baklib clean` | `baklib.cmd clean` | 删除容器、网络与数据卷（需 3 次验证码确认） |
-| 导入主题 | `./baklib import-themes [选项]` | `baklib.cmd import-themes [选项]` | 首次必选；选项：`--skip-clone`、`--clone-only` |
+与上表一致；**卸载**与**彻底清理**的区别：前者保留数据卷，后者执行 `clean` 任务并删除卷（需三次验证码）。完整一行命令见 **`docker-compose.cli.yml` 顶部注释**。
+
+## 🔧 Docker Compose 与 Rake
+
+配置类任务在 **`baklib-cli` 镜像**（`Dockerfile.cli`）内执行 **`rake`**：入口为 **`docker compose -f docker-compose.cli.yml run --rm <服务名>`**，服务内命令见 `docker-compose.cli.yml`（如 `config` → `rake config`）。**`lib/baklib/`** 为 Thor/tty-prompt/dotenv 实现；根目录 **`Rakefile`** 加载 **`lib/tasks/baklib.rake`**。
+
+不想手写长命令时，可用薄封装：**`./scripts/cli.sh <子命令>`**（Linux/macOS）或 **`scripts\cli.cmd <子命令>`**（Windows），与 **`docker-compose.cli.yml`** 顶部注释中的命令等价（子命令：`config`、`install`、`start`、`stop`、`restart`、`uninstall`、`clean`、`import-themes`）。
+
+在项目根目录可查看全部任务说明：
+
+```bash
+rake -T
+```
+
+| 场景 | Rake 任务 | 说明 |
+|------|-----------|------|
+| 配置 | `rake config` | 交互/非交互配置 `.env` 并渲染 `templates/**/*.erb` |
+| 安装 | `rake install` | 登录仓库、拉取镜像等（通常通过 `docker-compose.cli.yml` 的 `install` 服务跑） |
+| 导入主题 | `rake import_themes` | 导入主题；`SKIP_CLONE=1`、`CLONE_ONLY=1` 等见任务 `desc` |
+| 清理 | `rake clean` | 彻底清理（三次验证码） |
+| 启停主栈 | `rake start` 等 | 与宿主 `docker compose up|stop|restart` 等价；亦可直接使用 `docker compose` |
+
+非交互配置：`NON_INTERACTIVE_MODE=true`，或 `rake config -- --non-interactive`。开发回归可运行 `./scripts/test-config`（本机需 Ruby + `rake` + `tty-prompt` + `dotenv` + `thor`，与 `Dockerfile.cli` 版本一致）。
 
 ## 📁 目录结构
 
 ```
 baklib-docker/
 ├── README.md                      # 本文件
-├── docker-compose.yml             # Docker Compose 主配置（应用栈）
-├── docker-compose.cli.yml         # CLI 配置（拉取 BAKLIB_CLI_IMAGE，不本地构建）
-├── Dockerfile.cli                 # 维护者用：构建并发布 CLI 镜像（见「发布 CLI 镜像」）
-├── .env.example                   # 环境变量配置示例
+├── docs/                          # 开发说明（可选，见 develop.md、aliyun-oss-cdn.md）
+├── docker-compose.yml             # 本地生成（rake config），已加入 .gitignore
+├── templates/                     # ERB 源模板（Rails generator 风格，见 templates/README.md）
+│   ├── .env.erb / env_defaults.env  # 生成根目录 .env
+│   ├── docker-compose.yml.erb
+│   └── traefik/etc/...
+├── docker-compose.cli.yml         # CLI 服务（默认拉取 BAKLIB_CLI_IMAGE；含 build 段可本地构建）
+├── Dockerfile.cli                 # baklib-cli 镜像定义（见「发布 CLI 镜像」、scripts/build-dev-cli）
 │
-├── baklib                         # 统一入口（Linux/macOS）：config | install | start | stop | restart | uninstall | clean | import-themes
-├── baklib.cmd                     # 统一入口（Windows）：同上
-├── scripts/                       # 内部脚本（由 baklib / CLI 容器调用，不建议直接执行）
-│   ├── config.sh                  # 配置 .env
-│   ├── install.sh                 # 准备镜像
-│   ├── build-and-push-cli.sh      # 维护者用：构建并推送 CLI 镜像到仓库
-│   ├── start.sh                   # 启动（建议用 baklib start）
-│   ├── stop.sh                    # 停止（建议用 baklib stop）
-│   ├── restart.sh                 # 重启（建议用 baklib restart）
-│   ├── import-themes.sh           # 导入主题
-│   ├── clean.sh                   # 彻底清理（建议用 baklib clean）
-│   ├── test-config.sh             # 配置测试（开发用）
-│   └── common.sh                  # 公共函数库
+├── Rakefile                       # Rake 入口：加载 lib/tasks/*.rake（与 baklib-cli 内命令一致）
+├── lib/
+│   ├── baklib/                    # 配置/安装/主题/清理/生命周期等 Ruby 实现
+│   └── tasks/baklib.rake          # Rake 任务定义（desc 即说明）
+├── scripts/                       # 辅助脚本（见各文件头注释）
+│   ├── cli.sh / cli.cmd           # 可选：封装常用 docker compose 子命令（与 docker-compose.cli.yml 顶部一致）
+│   ├── build-dev-cli / run-dev-cli  # 维护者：本地构建 baklib-cli:dev 并跑 rake config
+│   ├── push-cli-image             # 维护者：buildx 多架构构建并推送 CLI 镜像
+│   └── test-config                # 配置回归测试（NON_INTERACTIVE_MODE=true rake config）
 │
 ├── product.pem                    # 产品证书文件（需要创建）
 │
-├── traefik/                       # Traefik 配置目录
+├── traefik/                       # 运行时使用（traefik.yml 等由 rake config 生成，已 .gitignore）
 │   ├── etc/
-│   │   ├── traefik.yml            # Traefik 主配置文件
-│   │   └── dynamic/                # 动态配置文件目录
-│   │       ├── common.yml          # 通用配置
-│   │       ├── sni-strict.yml      # TLS 安全配置
-│   │       └── traefik-dashboard.yml # Dashboard 配置
-│   └── README.md                  # Traefik 配置说明
+│   │   ├── traefik.yml            # 本地生成
+│   │   └── dynamic/
+│   │       ├── common.yml         # 本地生成
+│   │       ├── sni-strict.yml
+│   │       └── traefik-dashboard.yml
 │
 ├── logs/                          # 日志目录
 │   ├── postgresql/                # PostgreSQL 日志
@@ -328,6 +346,7 @@ baklib-docker/
 └── theme_repositories/            # 主题仓库目录
 
 **注意**：
+- 根目录 **`docker-compose.yml`** 与 **`traefik/etc/`** 下由模板渲染的 **`*.yml`** 均为 **`rake config` 本地生成**，已写入 `.gitignore`，克隆后须先配置才会出现这些文件。
 - `shell` 服务默认不启动，需要使用 `--profile debug` 启动
 - 所有数据卷使用命名卷，便于管理和备份
 ```
@@ -338,68 +357,43 @@ CLI 镜像由项目单独构建并推送到仓库，用户端只拉取、不本�
 
 1. **构建并推送**（需已登录对应镜像仓库；脚本使用 buildx 构建 **linux/amd64 + linux/arm64** 多平台镜像）：
    ```bash
-   ./scripts/build-and-push-cli.sh registry.devops.tanmer.com/library/baklib-cli:latest
+   ./scripts/push-cli-image registry.devops.tanmer.com/library/baklib-cli:latest
    ```
-   或指定版本标签：`./scripts/build-and-push-cli.sh registry.devops.tanmer.com/library/baklib-cli:v1.0.0`
+   或指定版本标签：`./scripts/push-cli-image registry.devops.tanmer.com/library/baklib-cli:v1.0.0`
 
 2. 若需在**国内可访问的镜像站**再发一份，可再执行一次并传入该镜像站地址；用户可在 `.env` 中设置 `BAKLIB_CLI_IMAGE=国内镜像地址` 使用。
 
 构建环境需能访问 `docker.io`（debian:bookworm-slim）及 `download.docker.com`（docker-ce-cli），建议在海外或具备代理的 CI/本机执行。
 
-## 🛠️ 主要脚本
+## 🛠️ 实现说明（Rake）
 
-> **说明**：以下脚本位于 `scripts/` 目录，由 **baklib** / **baklib.cmd** 或 CLI 容器调用。建议用户统一使用 `./baklib <子命令>` 或 `baklib.cmd <子命令>`，无需直接执行脚本。
+> **说明**：**config / install / import-themes / clean / start / stop / restart** 的实现均在 **`lib/baklib/`**，由根目录 **`Rakefile`** 与 **`lib/tasks/baklib.rake`** 暴露为 **`rake`** 任务；日常通过 **`docker compose -f docker-compose.cli.yml run --rm <服务名>`** 在容器内执行（见 **`docker-compose.cli.yml`**）。
 
-### scripts/install.sh - 安装（准备）
+### install（`rake install`）
 
-通过 `./baklib install` 或 `baklib.cmd install` 调用。负责准备镜像（登录仓库、拉取镜像）；若在 config 中配置了 **管理员手机号（ADMIN_PHONE）**，会临时启动 web 容器（`run --rm web`）执行 `bin/rails db:prepare` 初始化数据库，再执行 rails runner 将首个用户登录手机号写入（User 的 `mobile_phone` 字段），然后自动停止并移除所有相关容器，安装完成时无容器在运行。**不执行 config**；需先运行 `config` 生成/更新 `.env` 后再执行。
-
-功能：
-- 检查 Docker 环境（Docker 和 Docker Compose）
-- 检查 `.env` 存在（不存在则提示先执行 config）
-- 检查主栈 web 未在运行（已运行则提示先 uninstall）
-- **登录 Docker 镜像仓库**（从 `.env` 读取 `REGISTRY_USERNAME`、`REGISTRY_PASSWORD`）
-- 拉取 Docker 镜像
-- **若已配置 ADMIN_PHONE**：`run --rm web bin/rails db:prepare` → `run --rm web` 写入首个用户手机号 → `down` 清理容器
+通过 **`docker compose -f docker-compose.cli.yml run --rm install`**（需按文件注释传入 `COMPOSE_PROJECT_NAME`、`HOST_PROJECT_ROOT` 等）调用。负责准备镜像（登录仓库、拉取镜像）；若在 config 中配置了 **管理员手机号（ADMIN_PHONE）**，会临时启动 web 容器（`run --rm web`）执行 `bin/rails db:prepare` 初始化数据库，再执行 rails runner 将首个用户登录手机号写入（User 的 `mobile_phone` 字段），然后自动停止并移除所有相关容器，安装完成时无容器在运行。**不执行 config**；需先运行 `config` 生成/更新 `.env` 后再执行。
 
 **步骤顺序**：先 `config`（生成/更新 .env，可填管理员手机号）→ 再 `install`（准备镜像，可选执行 db:prepare 并写入首个用户）→ 再 `start` → `import-themes`
 
-### scripts/config.sh - 配置脚本
+### config（`rake config`）
 
-通过 `./baklib config` 或 `baklib.cmd config` 调用。交互式配置 `.env` 文件。
+通过 **`docker compose -f docker-compose.cli.yml run --rm config`** 调用（容器内执行 `rake config`）。交互式配置 `.env` 文件。
 
-功能：
-- 如果 `.env` 不存在，从 `.env.example` 创建（如果 `.env.example` 不存在会报错，需要先创建 `.env` 文件）
-- 交互式提示输入各项配置，含 **管理员手机号（ADMIN_PHONE）**：作为首个用户登录账号，`install` 时会执行 db:prepare 并写入数据库
-- **自动检测本地试用环境**：如果主域名为 `baklib.localhost`，自动配置本地环境参数（`SHOW_VERIFICATION_CODE=y`、`INGRESS_PROTOCOL=http`、`INGRESS_PORT=80`、关闭 HTTPS）
-- 自动生成 `SECRET_KEY_BASE`
-- **自动更新 Traefik 配置文件**：
-  - 更新 `traefik/etc/traefik.yml`（ETCD 密码、证书解析器、ACME 邮箱、readTimeout）
-  - 更新 `traefik/etc/dynamic/common.yml`（HTTP 到 HTTPS 重定向、请求体大小限制）
-  - 更新 `traefik/etc/dynamic/traefik-dashboard.yml`（域名、entryPoints、TLS 配置）
-  - 更新 `docker-compose.yml`（Traefik 路由配置）
-- **根据存储类型自动调整配置**：
-  - 本地存储：`readTimeout` 设置为 20 分钟，`maxRequestBodyBytes` 设置为 10GB
-  - 云存储：`readTimeout` 设置为 5 分钟，`maxRequestBodyBytes` 设置为 100MB
-- **验证 `.env` 文件语法**：自动检查语法错误（未匹配的引号、变量名格式等）
-- 支持非交互模式：`./baklib config` 时由脚本内部处理，或直接运行 `bash scripts/config.sh --non-interactive`（高级用法）
+功能要点：由 **`templates/.env.erb`** 与 **`templates/env_defaults.env`** 渲染/合并生成 `.env`，交互项、本地试用 `baklib.localhost`、`SECRET_KEY_BASE`、**ERB 渲染** Traefik/Compose、按存储类型调整超时与请求体、校验 `.env` 语法。非交互：`NON_INTERACTIVE_MODE=true` 或 `rake config -- --non-interactive`。
 
-### scripts/start.sh、stop.sh、restart.sh
+若已有一份 `.env`、只想**重新渲染** YAML 而不跑向导，可执行 **`rake render_yaml`**（与 `lib/baklib/render_yaml.rb` 一致）。
 
-通过 `./baklib start`、`./baklib stop`、`./baklib restart` 调用（baklib 直接执行 `docker compose`，不经过脚本）。脚本保留在 `scripts/` 供兼容或高级用法。
+### start / stop / restart
 
-### scripts/import-themes.sh - 导入主题（模版）
+在宿主机项目根目录直接执行 **`docker compose up -d`**、**`docker compose stop`**、**`docker compose restart`**（使用根目录生成的 **`docker-compose.yml`**）。本机若已安装与 **`Dockerfile.cli`** 相同版本的 gem，亦可 **`rake start`** 等，与上者等价。
 
-通过 `./baklib import-themes` 或 `baklib.cmd import-themes` 调用。首次安装必选，需在服务已正常启动后执行。
+### import-themes（`rake import_themes`）
 
-功能：
-- 从 [Gitee theme-wiki](https://gitee.com/baklib/theme-wiki) 克隆主题到主题仓库卷（统一使用 CLI 镜像挂载主题卷执行 git clone，与 config/install 同一镜像，无需额外 alpine）
-- 在 Web 容器内执行 `bin/rails themes:import dir=...` 写入数据库
-- 支持 `--skip-clone`（仅导入）、`--clone-only`（仅克隆）
+首次安装必选，需在服务已正常启动后执行。从 [Gitee theme-wiki](https://gitee.com/baklib/theme-wiki) 克隆到主题卷并执行 `themes:import`。命令行仍支持 `--skip-clone`、`--clone-only`（通过环境变量传入）；亦可直接设置 `SKIP_CLONE=1`、`CLONE_ONLY=1` 等（见 `rake -T import_themes`）。
 
-### scripts/clean.sh - 彻底清理
+### clean（`rake clean`）
 
-通过 `./baklib clean` 或 `baklib.cmd clean` 调用。清理所有容器、网络和数据卷（**危险操作**）。入口会传入当前目录名作为 `COMPOSE_PROJECT_NAME`，使在容器内执行的 `docker compose down -v` 能正确清理宿主机上的同一项目。
+彻底清理容器、网络与数据卷（**危险操作**）。入口会传入当前目录名作为 `COMPOSE_PROJECT_NAME`，使在容器内执行的 `docker compose down -v` 能正确清理宿主机上的同一项目。
 
 **⚠️ 警告**：此操作会删除所有数据，包括数据库数据，请确保已备份！
 
@@ -509,7 +503,7 @@ Traefik 反向代理服务，负责路由和负载均衡。
 
 ### 环境变量配置
 
-主要配置项在 `.env` 文件中，通过 `./baklib config`（或 `scripts/config.sh`）进行交互式配置。
+主要配置项在 `.env` 文件中，通过 `docker compose -f docker-compose.cli.yml run --rm config`（即 `rake config`）进行交互式配置。
 
 #### 必填配置项
 
@@ -568,7 +562,7 @@ Traefik 反向代理服务，负责路由和负载均衡。
   - `ALLOW_CREATE_ORGANIZATION`: 是否允许创建组织（默认 `true`）
   - `RESERVED_ORGANIZATION_IDENTIFIERS`: 保留的组织标识符（用空格分隔）
 
-详细配置说明请参考 `.env.example` 文件（如果存在）。
+详细配置说明见 **`templates/.env.erb`**（注释与条件块）及 **`templates/env_defaults.env`**（默认键值表）。
 
 ### Traefik 配置
 
@@ -579,27 +573,23 @@ Traefik 配置文件位于 `traefik/etc/` 目录：
 - `dynamic/sni-strict.yml`: TLS 安全配置
 - `dynamic/traefik-dashboard.yml`: Dashboard 配置
 
-详细说明请参考 `traefik/README.md`。
+模板与生成路径说明见 **`templates/README.md`**；开发细节见 **`docs/develop.md`**。
 
 **重要提示**：
-- **配置脚本会自动更新 Traefik 配置文件**，无需手动修改
-- 运行 `./baklib config`（内部调用 `config.sh`）会自动同步以下配置：
-  - `traefik.yml`: ETCD 密码、证书解析器、ACME 邮箱、readTimeout（根据存储类型）
-  - `common.yml`: HTTP 到 HTTPS 重定向、请求体大小限制（根据存储类型）
-  - `traefik-dashboard.yml`: 域名、entryPoints、TLS 配置
-  - `docker-compose.yml`: Traefik 路由配置（entryPoints、TLS）
-- 如果手动修改了 Traefik 配置文件，运行 `./baklib config` 会覆盖您的修改
+- **`rake config` 会根据 `.env` 渲染 YAML**：源模板在 **`templates/`**（见 `templates/README.md`），生成物为 `traefik/**` 与根目录 `docker-compose.yml`，请勿只改生成物（下次 config 会被覆盖）；应改 `templates/` 后重新执行 `docker compose -f docker-compose.cli.yml run --rm config`
+- 运行 `docker compose -f docker-compose.cli.yml run --rm config` 会通过 `lib/baklib/render_yaml.rb` 渲染模板，同步 ETCD、证书、readTimeout、请求体限制、Dashboard 与 Web 路由的 entryPoints/TLS 等；若仅需预览生成物，可执行 **`rake render_yaml`**
+- **baklib-cli 镜像**（`Dockerfile.cli`）基于 Ruby slim，已安装 `rake`、`tty-prompt`、`dotenv`、`thor` 与 `erb`；若在本机直接 `rake config`，需安装与镜像相同版本的 gem
 - 如果使用 ACME DNS 挑战，需要配置 `DNS_ALIYUN_ACCESS_KEY` 和 `DNS_ALIYUN_SECRET_KEY`
 
 ## ❓ 常见问题
 
 ### 0. 提示“服务已在运行”或 “已存在”？
 
-**start**：若服务已启动，执行 `./baklib start`（或 `baklib.cmd start`）时会**直接退出并提示**“服务已在运行，无需重复启动”；如需重启请使用 `./baklib restart`（或 `baklib.cmd restart`）。
+**start**：直接执行 **`docker compose up -d`** 通常会对已运行容器幂等处理；若需确认状态，先执行 **`docker compose ps`**。要应用新镜像或配置，请使用 **`docker compose restart`** 或 **`docker compose up -d --force-recreate`**（视场景而定）。
 
-**install**：若服务已启动，执行 `./baklib install`（或 `baklib.cmd install`）时会**直接退出并提示**先执行 stop 再执行 install，或若仅需更新镜像则修改 `.env` 中 `IMAGE_TAG` 后执行 `docker compose pull` 再执行 restart。
+**install**：若主栈（`web`）已在运行，**`rake install`** 会拒绝继续并提示先停止主栈；若仅需更新镜像，可改 `.env` 中 **`IMAGE_TAG`** 后执行 **`docker compose pull`** 再 **`docker compose restart`**。
 
-若未通过 baklib 而直接执行 `docker compose up -d`，可能看到“已存在”（already exists）等提示，属正常现象；建议日常统一使用 baklib/baklib.cmd，以便获得上述检查与提示。使用 `./baklib install` 时若出现 “Found orphan containers” 警告，是因为主栈已在运行、当前命令使用 `docker-compose.cli.yml`，可忽略。
+若在未先阅读上述约定的情况下直接执行 `docker compose up -d`，可能看到“已存在”（already exists）等提示，属正常现象。执行 **`docker compose -f docker-compose.cli.yml run --rm install`** 时若出现 “Found orphan containers” 警告，是因为主栈已在运行、当前命令使用 `docker-compose.cli.yml`，可忽略。
 
 ### 0.1 CLI 镜像拉取失败或想用国内镜像？
 
@@ -637,9 +627,7 @@ docker compose exec redis redis-cli
 docker compose pull
 
 # 重新创建并启动服务
-./baklib restart   # Linux/macOS
-# 或
-baklib.cmd restart # Windows
+docker compose restart
 ```
 
 ### 4. 如何备份数据？
@@ -687,27 +675,27 @@ docker compose up -d etcd-init
 
 ### 7. 如何修改配置？
 
-**推荐**：使用统一入口交互式修改并同步 Traefik 配置后重启。
+**推荐**：交互式修改并同步 Traefik 配置后重启：
 
-- **Linux/macOS**：`./baklib config`，然后 `./baklib restart`
-- **Windows**：`baklib.cmd config`，然后 `baklib.cmd restart`
+1. `docker compose -f docker-compose.cli.yml run --rm config`
+2. `docker compose restart`
 
-也可直接使用脚本或手动改 `.env`：
+也可直接手动改 `.env`，再运行配置以渲染模板：
 
 ```bash
-# 重新运行配置脚本（推荐）
-./baklib config   # 或 baklib.cmd config（Windows）
+# 重新运行配置（容器内为 rake config）
+docker compose -f docker-compose.cli.yml run --rm config
 
-# 或手动编辑 .env 后，用非交互模式仅更新 Traefik 配置（Linux/macOS）
-./baklib config
+# 或手动编辑 .env 后非交互渲染（本机已安装与 Dockerfile.cli 相同 gem 时）
+NON_INTERACTIVE_MODE=true rake config
 
 # 修改后重启服务
-./baklib restart  # 或 baklib.cmd restart（Windows）
+docker compose restart
 ```
 
 **注意**：
-- 如果只修改了 `.env` 文件，运行 `./baklib config`（Linux/macOS）会自动更新 Traefik 配置文件
-- 配置脚本会自动验证 `.env` 文件语法，如果发现错误会提示修复
+- 如果只修改了 `.env` 文件，运行 `docker compose -f docker-compose.cli.yml run --rm config` 会通过 `lib/baklib/render_yaml.rb` 自动更新 Traefik 等生成文件
+- `rake config` 会验证 `.env` 文件语法，如果发现错误会提示修复
 
 ### 8. 如何使用 Shell 调试服务？
 
@@ -733,11 +721,11 @@ redis-cli -h $REDIS_HOST -p $REDIS_PORT
 etcdctl --endpoints=$ETCD_ENDPOINTS --user=$ETCD_USER:$ETCD_PASSWORD endpoint health
 ```
 
-### 9. 配置脚本验证失败怎么办？
+### 9. `rake config` / `.env` 验证失败怎么办？
 
 ```bash
 # 检查 .env 文件语法
-./baklib config
+docker compose -f docker-compose.cli.yml run --rm config
 
 # 如果提示语法错误，检查：
 # 1. 未匹配的引号（单引号或双引号）
@@ -752,8 +740,9 @@ etcdctl --endpoints=$ETCD_ENDPOINTS --user=$ETCD_USER:$ETCD_PASSWORD endpoint he
 
 ## 📚 相关文档
 
-- [Traefik 配置说明](traefik/README.md) - Traefik 反向代理配置说明
-- 环境变量配置：通过 `./baklib config` 交互式配置，或参考 `docker-compose.yml` 中的环境变量定义
+- **`templates/README.md`**：Traefik / Compose 模板与生成路径对照
+- **`docs/develop.md`**：本地 Rake、渲染与 CLI 镜像维护说明
+- 环境变量：通过 `docker compose -f docker-compose.cli.yml run --rm config` 交互式配置，或参考生成后的 `docker-compose.yml` 中的环境变量定义
 
 ## ⚠️ 注意事项
 
@@ -774,9 +763,9 @@ etcdctl --endpoints=$ETCD_ENDPOINTS --user=$ETCD_USER:$ETCD_PASSWORD endpoint he
 7. **资源限制**：根据实际服务器配置调整 CPU 和内存限制（通过 `WEB_CONCURRENCY` 和 `WEB_MEMORY` 环境变量）
 8. **网络安全**：确保数据库和 Redis 不对外暴露端口
 9. **Docker Registry**：妥善保管 Docker Registry 账号密码，不要泄露
-10. **Traefik 配置**：不要手动修改 Traefik 配置文件，使用 `./baklib config` 自动更新
+10. **Traefik 配置**：不要只改已生成的 `traefik.yml` / `docker-compose.yml`，应改 **`templates/`** 下对应 `*.yml.erb` 后执行 `docker compose -f docker-compose.cli.yml run --rm config` 重新渲染
 11. **本地试用环境**：使用 `baklib.localhost` 作为主域名时，系统会自动配置本地环境参数，无需手动设置 HTTPS
-12. **存储类型影响**：选择不同的存储类型会影响 Traefik 的超时和请求体大小限制，配置脚本会自动调整
+12. **存储类型影响**：选择不同的存储类型会影响 Traefik 的超时和请求体大小限制，`rake config` 渲染模板时会自动调整
 
 ### 📞 获取帮助
 

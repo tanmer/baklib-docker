@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# 仅维护者本地调试：用 baklib-cli:dev 跑容器内 rake config（需先 ./scripts/build-dev-cli）
+set -euo pipefail
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.."
+export BAKLIB_CLI_IMAGE=baklib-cli:dev
+exec docker compose -f docker-compose.cli.yml run --rm config

@@ -1,8 +1,8 @@
-# Baklib CLI 镜像：用于在容器内执行 config/install/import-themes 等脚本
-# 挂载项目目录与 Docker 套接字后，可复用同一套 shell 脚本（GNU sed 等）
-# 国内镜像站拉取失败时，可设置 DOCKER_CLI_BASE_IMAGE 为镜像站地址，例如：
-#   DOCKER_CLI_BASE_IMAGE=docker.xuanyuan.me/library/debian:bookworm-slim
-ARG BASE_IMAGE=debian:bookworm-slim
+# Baklib CLI 镜像：在容器内执行 rake 任务（config/install 等）；内含 Ruby，用于 .yml.erb → .yml
+# 挂载项目目录与 Docker 套接字后，与宿主机共用同一套 Rakefile / lib/baklib
+# 国内镜像站拉取失败时，可设置 DOCKER_CLI_BASE_IMAGE，例如：
+#   DOCKER_CLI_BASE_IMAGE=docker.xuanyuan.me/library/ruby:3.3-slim-bookworm
+ARG BASE_IMAGE=ruby:3.3-slim-bookworm
 FROM ${BASE_IMAGE}
 
 RUN apt-get update -qq \
@@ -23,7 +23,16 @@ RUN apt-get update -qq \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Rake + tty-prompt + dotenv + thor（版本写死，避免构建漂移；CLI 交互对齐 Thor::Shell）
+RUN gem install rake -v 13.2.1 --no-document \
+    && gem install tty-prompt -v 0.23.1 --no-document \
+    && gem install dotenv -v 3.2.0 --no-document \
+    && gem install thor -v 1.5.0 --no-document \
+    && /usr/local/bin/ruby -S rake --version
+
+# compose 使用 `ruby -S rake`；PATH 须含 gem 的 bin（见 docker-compose.cli.yml environment）
+ENV PATH="/usr/local/bundle/bin:${PATH}"
+
 WORKDIR /work
 
-# 脚本由宿主机挂载到 /work，不复制进镜像，便于更新
-# 由 docker-compose 的 command 指定要执行的脚本，如 bash ./config.sh
+# 项目挂载到 /work；入口为 rake（见 docker-compose.cli.yml）

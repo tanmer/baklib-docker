@@ -1,0 +1,30 @@
+http:
+  routers:
+    traefik-dashboard:
+      rule: Host(`<%= dashboard_host %>`)
+      service: api@internal
+      entryPoints: <%= traefik_entry_point %>
+      priority: 999999
+<% if https_enabled? -%>
+      tls:
+        certResolver: <%= cert_resolver %>
+        domains:
+        - main: '<%= main_domain %>'
+          sans:
+          - '*.<%= main_domain %>'
+<% else -%>
+      #tls:
+      #  certResolver: alidns
+      #  domains:
+      #  - main: 'your-domain.com'
+      #    sans:
+      #    - '*.your-domain.com'
+<% end -%>
+      middlewares: traefik-dashboard-auth
+  middlewares:
+    traefik-dashboard-auth:
+      basicAuth:
+        users:
+          # htpasswd -nb your-username your-password
+          # admin:baklib.com
+          - 'admin:$apr1$Liuj158d$lIY1LffdIlwdV14SgHTfH1'

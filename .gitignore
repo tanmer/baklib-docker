@@ -1,3 +1,12 @@
 /logs/
 /.env
+/.config.tmp
 /product.pem
+/.test-backup/
+
+# 由 templates/**/*.erb 经 rake config 生成，勿提交（克隆后须先执行 docker compose -f docker-compose.cli.yml run --rm config）
+/docker-compose.yml
+/traefik/etc/traefik.yml
+/traefik/etc/dynamic/common.yml
+/traefik/etc/dynamic/sni-strict.yml
+/traefik/etc/dynamic/traefik-dashboard.yml

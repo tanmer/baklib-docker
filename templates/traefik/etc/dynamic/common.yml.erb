@@ -1,7 +1,7 @@
 http:
   routers:
     http-to-https:
-      # rule: "HostRegexp(`{host:.+}`) && !Host(`<%= URI(ENV['ASSET_CDN_HOST']).host %>`)"
+      # rule: "HostRegexp(`{host:.+}`) && !Host(`<%= asset_cdn_host_for_comment %>`)"
       rule: "HostRegexp(`.+\\.[a-z0-9]+$`)"
       priority: 2
       entryPoints: "http"
@@ -37,8 +37,8 @@ http:
     limit:
       buffering:
         # 本地存储时设置为 10GB (10737418240 字节)，云存储时限制为 100MB (104857600 字节)
-        # 实际限制值由 config.sh 根据 STORAGE_SAAS_DEFAULT_SERVICE 动态设置
-        maxRequestBodyBytes: 104857600
+        # 由 rake render_yaml / lib/baklib/render_yaml.rb 根据 STORAGE_SAAS_DEFAULT_SERVICE 写入
+        maxRequestBodyBytes: <%= max_request_body_bytes %>
     default-security-headers:
       headers:
         browserXssFilter: true
